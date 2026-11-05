@@ -1,0 +1,2799 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đấu Trường Bom Tin Học 10 - Bài 30: Kiểm Thử và Gỡ Lỗi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&family=Bungee&family=Be+Vietnam+Pro:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="/sound-engine.js"></script>
+  <style>
+    :root {
+      --primary: #FF2E7E;
+      --secondary: #6C5CE7;
+      --accent: #FFA502;
+      --green: #2ED573;
+      --blue: #0984E3;
+      --cyan: #00CEC9;
+      --purple: #A29BFE;
+      --gold: #FFD700;
+      --dark: #0A0815;
+      --panel-bg: rgba(18, 14, 38, 0.88);
+      --border: rgba(108, 92, 231, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 15%, #180f33 0%, #080612 100%);
+      color: #fff;
+      font-family: 'Outfit', 'Be Vietnam Pro', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* TOP HEADER */
+    header {
+      width: 100%;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(10, 8, 22, 0.8);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      flex-shrink: 1;
+      overflow: hidden;
+    }
+
+    .badge-lesson {
+      background: linear-gradient(135deg, #FF2E7E, #FFA502);
+      color: #fff;
+      font-family: 'Bungee', cursive;
+      font-size: 0.92rem;
+      padding: 6px 12px;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(255, 46, 126, 0.5);
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .header-titles {
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .header-titles h1 {
+      font-size: clamp(0.95rem, 1.3vw, 1.35rem);
+      font-weight: 900;
+      background: linear-gradient(to right, #ffffff, #a29bfe, #ff9ff3);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-titles p {
+      font-size: 0.82rem;
+      color: #b2bec3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .header-stats {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+
+    .stat-pill {
+      background: rgba(108, 92, 231, 0.2);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+      line-height: 1.2;
+    }
+
+    .stat-pill span,
+    .stat-pill b {
+      white-space: nowrap;
+      display: inline;
+    }
+
+    .stat-pill b {
+      color: var(--cyan);
+      font-family: 'Bungee', cursive;
+    }
+
+    .stat-pill.treasure-rain-pill {
+      animation: pulse-rainbow 1.2s infinite alternate ease-in-out;
+    }
+
+    @keyframes pulse-rainbow {
+      0% { filter: brightness(1); transform: scale(1); }
+      100% { filter: brightness(1.22); transform: scale(1.03); }
+    }
+
+    /* MAIN CONTAINER: ARENA + SIDEBAR */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 18px;
+      padding: 12px 24px;
+      max-width: 1920px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* ARENA WRAPPER */
+    .arena-box {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #090714;
+      border: 2px solid rgba(108, 92, 231, 0.4);
+      border-radius: 18px;
+      box-shadow: 0 0 40px rgba(108, 92, 231, 0.25);
+      overflow: hidden;
+      max-height: calc(100vh - 190px);
+    }
+
+    canvas#arenaCanvas {
+      width: 100%;
+      height: 100%;
+      aspect-ratio: 1600 / 1000;
+      display: block;
+      object-fit: contain;
+    }
+
+    /* ARENA OVERLAYS: TIMER & LIVE QUIZ BANNER */
+    .arena-timer-pill {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(13, 10, 28, 0.95);
+      border: 2px solid #FF4757;
+      box-shadow: 0 0 25px rgba(255, 71, 87, 0.6);
+      padding: 6px 24px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 120;
+      backdrop-filter: blur(8px);
+    }
+
+    .arena-timer-pill.urgent {
+      background: rgba(255, 71, 87, 0.92);
+      animation: blink-urgent 0.4s infinite alternate;
+    }
+
+    @keyframes blink-urgent {
+      0% { transform: translateX(-50%) scale(1); filter: brightness(1); }
+      100% { transform: translateX(-50%) scale(1.08); filter: brightness(1.25); }
+    }
+
+    .timer-num {
+      font-family: 'Bungee', cursive;
+      font-size: 2.2rem;
+      color: #fff;
+    }
+
+    .match-timer-pill.urgent {
+      background: rgba(255, 71, 87, 0.3) !important;
+      border-color: #FF4757 !important;
+      animation: pulse-badge 0.5s infinite alternate !important;
+    }
+
+    /* TOP EVENT ANNOUNCEMENT BANNER - ĐẶT DƯỚI ĐỒNG HỒ BOM (TOP: 74px), TÁCH BIỆT HOÀN TOÀN KHỎI KHUNG CẢNH BÁO ĐÁY (BOTTOM: 16px) */
+    .top-announcement-banner {
+      position: absolute;
+      top: 74px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(15, 11, 35, 0.96);
+      border: 2px solid var(--accent);
+      box-shadow: 0 0 35px rgba(255, 165, 2, 0.5);
+      border-radius: 35px;
+      padding: 9px 26px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      z-index: 150;
+      backdrop-filter: blur(12px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .top-announcement-banner.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .top-announcement-banner.correct {
+      border-color: #2ED573;
+      box-shadow: 0 0 35px rgba(46, 213, 115, 0.7);
+    }
+
+    .top-announcement-banner.wrong {
+      border-color: #FF4757;
+      box-shadow: 0 0 35px rgba(255, 71, 87, 0.7);
+    }
+
+    .top-announcement-banner.eliminated {
+      background: linear-gradient(135deg, rgba(45, 10, 25, 0.98), rgba(20, 5, 15, 0.98));
+      border: 2.5px solid #FF2E7E;
+      box-shadow: 0 0 45px rgba(255, 46, 126, 0.9);
+      animation: pulse-elim 0.4s infinite alternate;
+    }
+
+    @keyframes pulse-elim {
+      0% { transform: translateX(-50%) scale(1); }
+      100% { transform: translateX(-50%) scale(1.04); }
+    }
+
+    .top-announcement-banner.chest {
+      border-color: #FFD700;
+      box-shadow: 0 0 40px rgba(255, 215, 0, 0.75);
+    }
+
+    .announce-icon {
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+
+    .announce-text-col {
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+    }
+
+    .announce-title {
+      font-family: 'Bungee', cursive;
+      font-size: 1.05rem;
+      color: #fff;
+      letter-spacing: 0.5px;
+    }
+
+    .announce-sub {
+      font-size: 0.86rem;
+      color: #dcdde1;
+      font-weight: 600;
+    }
+
+    
+    /* QR ZOOM MODAL */
+    .qr-zoom-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(6, 4, 18, 0.96);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999999;
+      padding: 20px;
+      backdrop-filter: blur(14px);
+    }
+
+    .qr-zoom-modal.hidden {
+      display: none !important;
+    }
+
+    .qr-zoom-card {
+      background: linear-gradient(145deg, #1b1338, #0d0a1c);
+      border: 2.5px solid var(--gold);
+      box-shadow: 0 0 60px rgba(255, 215, 0, 0.45);
+      border-radius: 26px;
+      padding: 26px 36px;
+      max-width: 720px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      text-align: center;
+      animation: pop-modal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .qr-zoom-close {
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      background: rgba(255, 71, 87, 0.2);
+      border: 1.5px solid #FF4757;
+      color: #fff;
+      font-size: 1.2rem;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .qr-zoom-close:hover {
+      background: #FF4757;
+      transform: scale(1.1);
+    }
+
+    .qr-zoom-box-wrapper {
+      background: #ffffff;
+      padding: 18px;
+      border-radius: 20px;
+      box-shadow: 0 0 35px rgba(255, 255, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lobby-qr-card {
+      cursor: pointer;
+      position: relative;
+      transition: all 0.25s ease;
+    }
+
+    .lobby-qr-card:hover {
+      transform: scale(1.03);
+      box-shadow: 0 0 35px rgba(0, 206, 201, 0.6);
+    }
+
+    .qr-zoom-hint {
+      position: absolute;
+      bottom: -8px;
+      background: rgba(18, 14, 38, 0.95);
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    /* LOBBY SCREEN (MÀN HÌNH CHÍNH CHỜ QUÉT MÃ QR) */
+    .lobby-screen {
+      flex: 1;
+      display: flex;
+      gap: 28px;
+      padding: 16px 32px;
+      max-width: 1600px;
+      margin: 0 auto;
+      width: 100%;
+      align-items: stretch;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .lobby-screen.hidden,
+    .arena-main.hidden,
+    footer.hidden {
+      display: none !important;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .lobby-left {
+      width: 440px;
+      background: var(--panel-bg);
+      border: 2px solid var(--secondary);
+      border-radius: 24px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 14px;
+      box-shadow: 0 0 50px rgba(108, 92, 231, 0.35);
+      backdrop-filter: blur(12px);
+    }
+
+    .lobby-title {
+      font-family: 'Bungee', cursive;
+      font-size: 1.45rem;
+      background: linear-gradient(135deg, #FFD700, #FFA502);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .lobby-qr-card {
+      background: #ffffff;
+      padding: 14px;
+      border-radius: 18px;
+      box-shadow: 0 0 35px rgba(255, 255, 255, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lobby-link-box {
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px dashed var(--cyan);
+      border-radius: 12px;
+      padding: 10px 16px;
+      width: 100%;
+      word-break: break-all;
+    }
+
+    .lobby-link-box span {
+      font-size: 0.75rem;
+      color: #b2bec3;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .lobby-link-box b {
+      color: var(--cyan);
+      font-size: 1.1rem;
+      font-family: monospace;
+    }
+
+    .btn-lobby-start {
+      width: 100%;
+      font-size: 1.25rem;
+      padding: 16px 20px;
+      border-radius: 16px;
+      animation: pulse-start 1.5s infinite alternate;
+      box-shadow: 0 0 35px rgba(255, 46, 126, 0.6);
+      cursor: pointer;
+    }
+
+    @keyframes pulse-start {
+      0% { transform: scale(1); filter: brightness(1); }
+      100% { transform: scale(1.03); filter: brightness(1.2); }
+    }
+
+    .lobby-sub-buttons {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .lobby-right {
+      flex: 1;
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      backdrop-filter: blur(12px);
+    }
+
+    .lobby-roster-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 12px;
+    }
+
+    .lobby-roster-header h2 {
+      font-family: 'Bungee', cursive;
+      font-size: 1.25rem;
+      color: var(--gold);
+    }
+
+    .lobby-student-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 12px;
+      overflow-y: auto;
+      max-height: calc(100vh - 250px);
+      padding: 6px;
+    }
+
+    .lobby-student-card {
+      background: linear-gradient(135deg, rgba(34, 25, 68, 0.95), rgba(18, 14, 38, 0.95));
+      border: 1.5px solid rgba(108, 92, 231, 0.55);
+      border-radius: 14px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .lobby-student-card:hover {
+      border-color: var(--gold);
+      transform: translateY(-2px);
+    }
+
+    .lobby-student-avatar {
+      font-size: 2.2rem;
+      line-height: 1;
+      filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
+    }
+
+    .lobby-student-name {
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: #fff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lobby-empty-hint {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 280px;
+      color: #a4a0c8;
+      font-size: 1.15rem;
+      text-align: center;
+      gap: 12px;
+    }
+
+    /* LIVE QUIZ BANNER (ON SCREEN) - GIAO DIỆN RỘNG RÃI TO RÕ TRÊN MÀN HÌNH GIÁO VIÊN */
+    .live-quiz-banner {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 48px);
+      max-width: 1100px;
+      background: linear-gradient(135deg, rgba(20, 15, 45, 0.96), rgba(10, 8, 25, 0.96));
+      border: 2px solid #FFA502;
+      box-shadow: 0 0 40px rgba(255, 165, 2, 0.45);
+      border-radius: 20px;
+      padding: 16px 24px;
+      z-index: 130;
+      backdrop-filter: blur(14px);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      animation: slide-down-banner 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .live-quiz-banner.hidden {
+      display: none !important;
+    }
+
+    @keyframes slide-down-banner {
+      0% { transform: translate(-50%, -20px); opacity: 0; }
+      100% { transform: translate(-50%, 0); opacity: 1; }
+    }
+
+    .quiz-banner-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      padding-bottom: 8px;
+      gap: 12px;
+    }
+
+    .quiz-timer-badge {
+      background: rgba(255, 71, 87, 0.25);
+      border: 1.5px solid #FF4757;
+      color: #fff;
+      font-family: 'Bungee', cursive;
+      font-size: 0.95rem;
+      padding: 3px 12px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 0 12px rgba(255, 71, 87, 0.4);
+      flex-shrink: 0;
+    }
+
+    .quiz-timer-badge.urgent {
+      background: rgba(255, 71, 87, 0.95);
+      box-shadow: 0 0 20px rgba(255, 71, 87, 0.8);
+      animation: pulse-badge 0.4s infinite alternate;
+    }
+
+    @keyframes pulse-badge {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.06); }
+    }
+
+    .quiz-type-tag {
+      font-family: 'Bungee', cursive;
+      font-size: 0.85rem;
+      padding: 4px 12px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .quiz-type-tag.pass {
+      background: rgba(255, 71, 87, 0.25);
+      border: 1px solid #FF4757;
+      color: #FF7675;
+    }
+
+    .quiz-type-tag.unlock {
+      background: rgba(0, 206, 201, 0.25);
+      border: 1px solid #00CEC9;
+      color: #81ECEC;
+    }
+
+    .quiz-type-tag.chest {
+      background: rgba(255, 215, 0, 0.25);
+      border: 1px solid #FFD700;
+      color: #FFD700;
+    }
+
+    .quiz-banner-question {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.45;
+      margin: 4px 0 6px;
+    }
+
+    .quiz-banner-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .quiz-opt-card {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1.5px solid rgba(255, 255, 255, 0.18);
+      border-radius: 12px;
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 52px;
+      box-sizing: border-box;
+      position: relative;
+      font-size: 1.02rem;
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .quiz-opt-card .opt-prefix {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Bungee', cursive;
+      font-size: 0.9rem;
+      color: var(--cyan);
+      flex-shrink: 0;
+    }
+
+    .quiz-opt-card .opt-content {
+      font-size: 1.02rem;
+      color: #fff;
+      font-weight: 600;
+      flex: 1;
+      word-break: break-word;
+    }
+
+    .quiz-opt-card .opt-badge {
+      font-size: 0.82rem;
+      font-weight: 800;
+      border-radius: 20px;
+      padding: 2px 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ĐỒNG BỘ: KHI HỌC SINH ĐANG CHỌN ĐÁP ÁN NÀY (KHÔNG SCALE LÀM PHÓNG TO ĐỘT XUẤT) */
+    .quiz-opt-card.selected-by-student {
+      border-color: #FFD700 !important;
+      background: rgba(255, 215, 0, 0.22) !important;
+      box-shadow: 0 0 25px rgba(255, 215, 0, 0.65) !important;
+    }
+
+    .quiz-opt-card.selected-by-student .opt-prefix {
+      background: #FFD700;
+      color: #000;
+    }
+
+    .quiz-opt-card.selected-by-student .opt-badge {
+      background: #FFD700;
+      color: #000;
+    }
+
+    /* KẾT QUẢ ĐÚNG */
+    .quiz-opt-card.correct-revealed {
+      border-color: #2ED573 !important;
+      background: rgba(46, 213, 115, 0.3) !important;
+      box-shadow: 0 0 35px rgba(46, 213, 115, 0.8) !important;
+    }
+
+    .quiz-opt-card.correct-revealed .opt-prefix {
+      background: #2ED573;
+      color: #fff;
+    }
+
+    .quiz-opt-card.correct-revealed .opt-badge {
+      background: #2ED573;
+      color: #fff;
+    }
+
+    /* KẾT QUẢ SAI */
+    .quiz-opt-card.wrong-revealed {
+      border-color: #FF4757 !important;
+      background: rgba(255, 71, 87, 0.3) !important;
+      box-shadow: 0 0 35px rgba(255, 71, 87, 0.8) !important;
+      animation: shake-opt 0.4s ease;
+    }
+
+    .quiz-opt-card.wrong-revealed .opt-prefix {
+      background: #FF4757;
+      color: #fff;
+    }
+
+    .quiz-opt-card.wrong-revealed .opt-badge {
+      background: #FF4757;
+      color: #fff;
+    }
+
+    @keyframes shake-opt {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+
+    .quiz-explain-card {
+      background: rgba(0, 206, 201, 0.15);
+      border: 1px solid var(--cyan);
+      border-radius: 12px;
+      padding: 10px 16px;
+      color: #E0FFFF;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    /* RIGHT SIDEBAR: LEADERBOARD & FEED */
+    .sidebar {
+      width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      font-family: 'Bungee', cursive;
+      font-size: 1rem;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    /* LEADERBOARD LIST */
+    .leaderboard-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 290px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .leaderboard-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    .leaderboard-list::-webkit-scrollbar-thumb {
+      background: #6C5CE7;
+      border-radius: 4px;
+    }
+
+    .lb-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 0.88rem;
+      transition: all 0.2s;
+    }
+
+    .lb-row.top-1 {
+      border-color: #FFD700;
+      background: rgba(255, 215, 0, 0.12);
+    }
+    .lb-row.top-2 {
+      border-color: #C0C0C0;
+      background: rgba(192, 192, 192, 0.1);
+    }
+    .lb-row.top-3 {
+      border-color: #CD7F32;
+      background: rgba(205, 127, 50, 0.1);
+    }
+
+    .lb-row.dead-row {
+      opacity: 0.55;
+      background: rgba(0, 0, 0, 0.35);
+      border-color: rgba(255, 71, 87, 0.2);
+    }
+
+    .survival-badge {
+      font-size: 0.76rem;
+      font-weight: 800;
+      border-radius: 12px;
+      padding: 3px 9px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .survival-badge.alive {
+      background: rgba(46, 213, 115, 0.18);
+      border: 1px solid #2ED573;
+      color: #2ED573;
+    }
+
+    .survival-badge.winner {
+      background: rgba(255, 215, 0, 0.25);
+      border: 1px solid #FFD700;
+      color: #FFD700;
+      font-family: 'Bungee', cursive;
+    }
+
+    .survival-badge.dead {
+      background: rgba(255, 71, 87, 0.15);
+      border: 1px solid #FF4757;
+      color: #FF7675;
+    }
+
+    .lb-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .lb-rank {
+      font-family: 'Bungee', cursive;
+      font-size: 0.85rem;
+      width: 22px;
+      text-align: center;
+      color: #b2bec3;
+    }
+
+    .lb-name {
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
+    }
+
+    .lb-score {
+      font-family: 'Bungee', cursive;
+      font-size: 0.95rem;
+      color: var(--cyan);
+    }
+
+    /* LIVE EVENT TICKER / FEED */
+    .feed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 220px;
+      overflow-y: hidden;
+    }
+
+    .feed-item {
+      font-size: 0.8rem;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border-left: 3px solid #6C5CE7;
+      line-height: 1.35;
+      animation: fade-in-feed 0.3s ease;
+    }
+
+    @keyframes fade-in-feed {
+      0% { opacity: 0; transform: translateX(10px); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+
+    .feed-item.success { border-left-color: #2ED573; background: rgba(46, 213, 115, 0.08); }
+    .feed-item.warning { border-left-color: #FFA502; background: rgba(255, 165, 2, 0.08); }
+    .feed-item.error { border-left-color: #FF4757; background: rgba(255, 71, 87, 0.08); }
+
+    /* FOOTER / HOST CONTROLS */
+    footer {
+      width: 100%;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: rgba(10, 8, 22, 0.95);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+      z-index: 10;
+    }
+
+    .host-buttons {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #6C5CE7, #8e7bff);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.15);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #FF2E7E, #FFA502);
+      font-size: 0.95rem;
+      padding: 10px 20px;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #d63031, #e17055);
+    }
+
+    /* BUG ALERT CARD (CHỈ CHIẾU CÂU TRẢ LỜI SAI NỔI BẬT Ở ĐÁY ARENA) */
+    .bug-alert-card {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 48px);
+      max-width: 900px;
+      background: rgba(18, 12, 34, 0.95);
+      border: 2px solid #FFA502;
+      border-radius: 14px;
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 0 35px rgba(255, 165, 2, 0.5);
+      backdrop-filter: blur(12px);
+      z-index: 140;
+      animation: slide-up-alert 0.35s ease-out;
+      pointer-events: none;
+    }
+
+    .bug-alert-card.hidden {
+      display: none !important;
+    }
+
+    @keyframes slide-up-alert {
+      0% { transform: translate(-50%, 25px); opacity: 0; }
+      100% { transform: translate(-50%, 0); opacity: 1; }
+    }
+
+    .bug-alert-icon {
+      font-size: 2.2rem;
+      flex-shrink: 0;
+      animation: wobble-icon 1s infinite alternate;
+    }
+
+    @keyframes wobble-icon {
+      0% { transform: rotate(-8deg); }
+      100% { transform: rotate(8deg); }
+    }
+
+    .bug-alert-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      text-align: left;
+    }
+
+    .bug-alert-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+
+    .bug-student-badge {
+      background: #FF4757;
+      color: #fff;
+      font-weight: 800;
+      padding: 2px 10px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      letter-spacing: 0.5px;
+    }
+
+    .bug-alert-title {
+      color: #FFA502;
+      font-weight: 800;
+      font-family: 'Bungee', cursive;
+      letter-spacing: 0.5px;
+    }
+
+    .bug-question-line {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bug-explain-line {
+      font-size: 0.88rem;
+      color: #dfe6e9;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* SUMMARY MODAL */
+    .summary-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(8, 6, 18, 0.96);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 999999;
+      padding: 24px;
+    }
+
+    body.game-over #arenaTimerPill,
+    body.game-over #liveQuizBanner,
+    body.game-over #topAnnouncementBanner,
+    body.game-over #bugAlertCard,
+    .summary-modal:not(.hidden) ~ * #arenaTimerPill {
+      display: none !important;
+    }
+
+    .summary-modal.hidden {
+      display: none;
+    }
+
+    .summary-card {
+      background: linear-gradient(145deg, #20173e, #110d24);
+      border: 2px solid var(--gold);
+      box-shadow: 0 0 60px rgba(255, 215, 0, 0.4);
+      border-radius: 24px;
+      padding: 22px 34px;
+      max-width: 940px;
+      width: 100%;
+      max-height: 94vh;
+      overflow-y: auto;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .summary-title {
+      font-family: 'Bungee', cursive;
+      font-size: 2.2rem;
+      color: var(--gold);
+      text-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP HEADER -->
+  <header>
+    <div class="header-left">
+      <div class="badge-lesson">TIN HỌC 10 • BÀI 30</div>
+      <div class="header-titles">
+        <h1>ĐẤU TRƯỜNG BOM: KIỂM THỬ VÀ GỠ LỖI CHƯƠNG TRÌNH</h1>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill treasure-rain-pill" id="statRainPill" style="display: none; background: linear-gradient(135deg, #FF4757, #FFA502); color: #fff; border: 2px solid #FFD700; box-shadow: 0 0 16px rgba(255, 107, 107, 0.7); font-weight: 800; white-space: nowrap; flex-shrink: 0;">
+        🌧️ BÃO RƯƠNG x1.5! (<b id="statRainTimer" style="color: #fff; font-family: monospace;">30s</b>)
+      </div>
+      <div class="stat-pill match-timer-pill" id="matchTimerPill" style="background: rgba(0, 206, 201, 0.15); border: 2px solid #00CEC9; color: #fff; white-space: nowrap; flex-shrink: 0;">
+        ⏱️ TRẬN ĐẤU: <b id="statMatchTimer" style="color: #00CEC9; font-size: 1.15rem; font-family: monospace; letter-spacing: 1px;">05:00</b>
+      </div>
+      <div class="stat-pill" id="statPlayerCountPill" style="white-space: nowrap; flex-shrink: 0;">
+        <span>👥 Học sinh:</span> <b id="statPlayerCount" style="color: var(--cyan); margin: 0 2px;">0</b><span style="opacity: 0.75;">/40</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MÀN HÌNH CHÍNH: PHÒNG CHỜ QUÉT MÃ QR (LOBBY ENTRY SCREEN) -->
+  <div class="lobby-screen" id="lobbyScreen">
+    <!-- CỘT TRÁI: QR CODE & ĐIỀU KHIỂN BẮT ĐẦU -->
+    <div class="lobby-left">
+      <div class="badge-lesson">TIN HỌC 10 • BÀI 30</div>
+      <h2 class="lobby-title">QUÉT MÃ VÀO PHÒNG</h2>
+      <p style="font-size: 0.85rem; color: #b2bec3;">Mở Camera điện thoại hoặc Zalo để quét mã tham gia đấu trường</p>
+      
+      <div class="lobby-qr-card" id="btnClickQrToZoom" title="Bấm để phóng to mã QR toàn màn hình">
+        <div id="lobbyQrcodeBox"></div>
+        <div class="qr-zoom-hint">🔍 Bấm để phóng to mã QR</div>
+      </div>
+      <button class="btn btn-secondary" id="btnOpenQrZoom" style="margin-top: 10px; width: 100%; font-size: 0.88rem; border-color: var(--cyan); color: #00CEC9; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        🔍 PHÓNG TO MÃ QR (DÀNH CHO HỌC SINH NGỒI XA)
+      </button>
+
+      <div style="background: rgba(0, 0, 0, 0.45); border: 1.5px dashed var(--gold); border-radius: 12px; padding: 10px 14px; width: 100%; text-align: center; word-break: break-all; margin-top: 10px; margin-bottom: 12px;">
+        <span style="font-size: 0.72rem; color: #b2bec3; display: block; margin-bottom: 3px; font-weight: 600;">HOẶC NHẬP LINK TRÊN TRÌNH DUYỆT ĐIỆN THOẠI:</span>
+        <b id="lobbyJoinUrlText" style="color: var(--gold); font-size: 1.1rem; font-family: monospace; letter-spacing: 0.5px;">Đang lấy link...</b>
+        <button id="btnEditJoinUrl" style="background: none; border: none; color: var(--cyan); font-size: 0.75rem; cursor: pointer; text-decoration: underline; margin-top: 5px; display: block; width: 100%;">✏️ Đổi link phòng (khi dùng tunnel / online)</button>
+      </div>
+
+      <button class="btn btn-primary btn-lobby-start" id="btnLobbyStartRound">
+        🚀 BẮT ĐẦU TRÒ CHƠI
+      </button>
+
+      <div class="lobby-sub-buttons">
+        <button class="btn btn-secondary" id="btnLobbyAddBot">🤖 + Thêm Bot</button>
+        <button class="btn btn-secondary" id="btnLobbyRemoveBots">🧹 Xóa Bot</button>
+        <button class="btn btn-secondary" id="btnLobbySoundToggle">🔊 Âm thanh: BẬT</button>
+      </div>
+    </div>
+
+    <!-- CỘT PHẢI: DANH SÁCH HỌC SINH ĐÃ VÀO PHÒNG THỰC TẾ -->
+    <div class="lobby-right">
+      <div class="lobby-roster-header">
+        <div>
+          <h2>👥 DANH SÁCH THÀNH VIÊN ĐÃ VÀO</h2>
+        </div>
+        <div class="stat-pill" style="font-size: 1.1rem; border-color: var(--gold);">
+          Học sinh: <b id="lobbyPlayerCount" style="color: var(--gold);">0</b> / 40
+        </div>
+      </div>
+
+      <div class="lobby-student-grid" id="lobbyStudentGrid">
+        <!-- Render động danh sách học sinh thật đã vào phòng -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN BODY: ARENA + LEADERBOARD (ẨN KHI Ở PHÒNG CHỜ) -->
+  <main id="arenaScreen" class="arena-main hidden">
+    <!-- ARENA VIEW -->
+    <div class="arena-box">
+      <canvas id="arenaCanvas" width="1600" height="1000"></canvas>
+
+      <!-- BOMB TIMER OVERLAY -->
+      <div class="arena-timer-pill" id="arenaTimerPill">
+        <span style="font-size: 1.5rem;">💣</span>
+        <span class="timer-num" id="arenaTimerVal">15.0</span>
+        <span style="font-weight: 700; color: #ff9ff3; font-size: 0.9rem;">GIÂY</span>
+      </div>
+
+      <!-- TOP-CENTER ANNOUNCEMENT BANNER -->
+      <div class="top-announcement-banner" id="topAnnouncementBanner">
+        <span class="announce-icon" id="topAnnounceIcon">🎉</span>
+        <div class="announce-text-col">
+          <div class="announce-title" id="topAnnounceTitle">TIÊU ĐỀ THÔNG BÁO</div>
+          <div class="announce-sub" id="topAnnounceSub">Nội dung chi tiết thông báo</div>
+        </div>
+      </div>
+
+      <!-- LIVE QUIZ BANNER WITH REAL-TIME SYNC -->
+      <div class="live-quiz-banner hidden" id="liveQuizBanner">
+        <div class="quiz-banner-header">
+          <div class="quiz-type-tag pass" id="quizTypeTag">⚡ CHUYỀN BOM: TRẢ LỜI CÂU HỎI</div>
+          <div style="font-size: 0.95rem; color: #FFA502; font-weight: 700;" id="quizParticipants">Minh Anh ➔ Gia Hân</div>
+          <div style="font-size: 0.85rem; color: #A29BFE; font-weight: 700;" id="quizLiveStatus">⏳ Đang suy nghĩ và chọn đáp án...</div>
+          <div class="quiz-timer-badge" id="quizHeaderTimerBadge">💣 <span id="quizTimerVal">15.0</span>s</div>
+        </div>
+        <div class="quiz-banner-question" id="quizQuestionText">
+          Câu hỏi trắc nghiệm Bài 30 đang hiển thị...
+        </div>
+        <div class="quiz-banner-options" id="quizOptionsList">
+          <!-- 4 đáp án A, B, C, D hiển thị và đồng bộ theo thời gian thực -->
+        </div>
+        <div class="quiz-explain-card" id="quizExplainCard"></div>
+      </div>
+
+      <!-- BUG ALERT CARD: CHỈ CHIẾU CÂU TRẢ LỜI SAI NỔI BẬT ĐỂ CẢ LỚP RÚT KINH NGHIỆM (3.8s) -->
+      <div class="bug-alert-card hidden" id="bugAlertCard">
+        <div class="bug-alert-icon">⚠️</div>
+        <div class="bug-alert-body">
+          <div class="bug-alert-top">
+            <span class="bug-student-badge" id="bugStudentName">Học sinh</span>
+            <span class="bug-alert-title">VỪA DÍNH BẪY GỠ LỖI BÀI 30!</span>
+          </div>
+          <div class="bug-question-line" id="bugQuestionText">
+            "Câu hỏi trắc nghiệm gỡ lỗi Bài 30"
+          </div>
+          <div class="bug-explain-line">
+            <span style="color: #2ED573; font-weight: 800;" id="bugCorrectAnswer">✅ ĐÁP ÁN: ...</span>
+            <span style="color: #dfe6e9;" id="bugExplainText"> — Giải thích SGK Bài 30</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <aside class="sidebar">
+      <!-- SURVIVAL ROSTER PANEL -->
+      <div class="panel" style="flex: 1.2;">
+        <div class="panel-header">
+          <span>🏆 BẢNG XẾP HẠNG</span>
+          <span style="font-size: 0.75rem; color: #00CEC9;">ĐIỂM SỐ</span>
+        </div>
+        <div class="leaderboard-list" id="survivalRosterList">
+          <!-- Render dynamically -->
+        </div>
+      </div>
+
+      <!-- LIVE EVENT FEED -->
+      <div class="panel" style="flex: 1;">
+        <div class="panel-header">
+          <span>📡 DIỄN BIẾN TRẬN ĐẤU</span>
+          <span style="font-size: 0.75rem; color: #00CEC9;">LIVE</span>
+        </div>
+        <div class="feed-list" id="feedList">
+          <!-- Live events -->
+        </div>
+      </div>
+    </aside>
+  </main>
+
+    <!-- QR ZOOM MODAL FOR LARGE CLASSROOM PROJECTION -->
+  <div class="qr-zoom-modal hidden" id="qrZoomModal">
+    <div class="qr-zoom-card">
+      <button class="qr-zoom-close" id="btnCloseQrZoom" title="Đóng phóng to (ESC)">✕</button>
+      <div class="badge-lesson" style="margin-bottom: 6px;">TIN HỌC 10 • BÀI 30</div>
+      <h2 style="font-family: 'Bungee', cursive; color: var(--gold); font-size: 1.8rem; margin: 0;">QUÉT MÃ VÀO THI ĐẤU</h2>
+      <p style="font-size: 1rem; color: #dfe6e9; margin: 6px 0 16px;">Học sinh ngồi xa mở Camera điện thoại hoặc Zalo để quét mã</p>
+      
+      <div class="qr-zoom-box-wrapper">
+        <div id="qrZoomCodeBox"></div>
+      </div>
+
+      <div style="background: rgba(0, 0, 0, 0.6); border: 2px dashed var(--gold); border-radius: 16px; padding: 14px 24px; margin-top: 16px; text-align: center; width: 100%; max-width: 600px;">
+        <span style="font-size: 0.88rem; color: #b2bec3; display: block; margin-bottom: 4px; font-weight: 700;">HOẶC NHẬP TRỰC TIẾP TRÊN TRÌNH DUYỆT ĐIỆN THOẠI:</span>
+        <b id="qrZoomLinkText" style="color: var(--cyan); font-size: 1.6rem; font-family: monospace; letter-spacing: 1.5px; user-select: all;">http://192.168.1.5:3000</b>
+      </div>
+
+      <button class="btn btn-primary" id="btnModalCloseQrZoom" style="font-size: 1.1rem; padding: 12px 36px; margin-top: 16px;">
+        ✕ ĐÓNG PHÓNG TO MÃ QR
+      </button>
+    </div>
+  </div>
+
+  <!-- SUMMARY MODAL (VINH DANH) -->
+  <div class="summary-modal hidden" id="summaryModal">
+    <div class="summary-card">
+      <div style="font-size: 3rem;">🎉 👑 🎓</div>
+      <h2 class="summary-title">BẢNG VÀNG VINH QUANG</h2>
+      <p style="color: #ffb8d9; font-size: 1.1rem;">
+        Chúc mừng các bạn xuất sắc nhất trong buổi củng cố Bài 30: Kiểm thử và gỡ lỗi!
+      </p>
+      <div id="podiumTop3" style="display: flex; gap: 16px; width: 100%; justify-content: center; margin-top: 10px;">
+        <!-- Top 3 -->
+      </div>
+      <button class="btn btn-primary" id="btnCloseSummary" style="font-size: 1.1rem; padding: 12px 32px; margin-top: 10px;">
+        ĐÓNG BẢNG VINH DANH
+      </button>
+    </div>
+  </div>
+
+  <!-- HOST FOOTER CONTROLS (KHÔNG CÒN MÃ QR TRONG TRẬN ĐẤU) -->
+  <footer id="arenaFooter" class="hidden">
+    <div class="host-buttons">
+      <button class="btn btn-secondary" id="btnSoundToggle">🔊 Âm thanh: BẬT</button>
+      <button class="btn btn-secondary" id="btnAddBot">🤖 + Thêm Bot</button>
+      <button class="btn btn-secondary" id="btnRemoveBots">🧹 Xóa Bot</button>
+      <button class="btn btn-danger" id="btnResetGame">🔄 Reset phòng chờ</button>
+      <button class="btn btn-secondary" id="btnOpenSummary">🏆 Bảng Vàng</button>
+      <button class="btn btn-primary" id="btnStartRound">▶ BẮT ĐẦU VÒNG ĐẤU</button>
+    </div>
+  </footer>
+
+  <script>
+    // ==========================================
+    // SOUND & PROCEDURAL BGM ADAPTER
+    // ==========================================
+    let soundEnabled = true;
+
+    const Sound = {
+      tick: () => window.GameAudio?.sfx.tick(),
+      beepUrgent: (pitch = 850) => window.GameAudio?.sfx.beepUrgent(pitch),
+      teleport: () => window.GameAudio?.sfx.teleport(),
+      correct: () => window.GameAudio?.sfx.correct(),
+      wrong: () => window.GameAudio?.sfx.wrong(),
+      freeze: () => window.GameAudio?.sfx.stun(),
+      explosion: () => window.GameAudio?.sfx.explosion(),
+      powerup: () => window.GameAudio?.sfx.powerup(),
+      pass: () => window.GameAudio?.sfx.pass(),
+      receiveBomb: () => window.GameAudio?.sfx.receiveBomb(),
+      chestOpen: () => window.GameAudio?.sfx.chestOpen(),
+      respawn: () => window.GameAudio?.sfx.respawn(),
+      dash: () => window.GameAudio?.sfx.dash()
+    };
+
+    // ==========================================
+    // INITIALIZATION & STATE
+    // ==========================================
+    const socket = io();
+    const arenaCanvas = document.getElementById('arenaCanvas');
+    const ctx = arenaCanvas.getContext('2d');
+
+    let arenaConfig = {
+      width: 1600,
+      height: 1000,
+      obstacles: []
+    };
+
+    let gameState = {
+      status: 'LOBBY',
+      roundNumber: 0,
+      bombTimer: 30.0,
+      bombHolderId: null,
+      immunePlayerId: null,
+      activeQuiz: null,
+      players: [],
+      rosterCount: 0,
+      leaderboard: []
+    };
+
+    // Visual FX
+    let particles = [];
+    let shockwaves = [];
+    let dashTrails = [];
+    let teleportRays = [];
+    let screenShake = 0;
+    let lastBeepSec = -1;
+
+    // ==========================================
+    // SOCKET LISTENERS
+    // ==========================================
+    socket.on('init_arena', (data) => {
+      arenaConfig = {
+        width: data.width || 1600,
+        height: data.height || 1000,
+        obstacles: data.obstacles || []
+      };
+      arenaCanvas.width = arenaConfig.width;
+      arenaCanvas.height = arenaConfig.height;
+
+      if (data && data.joinUrl && typeof renderLobbyQRCode === 'function') {
+        renderLobbyQRCode(data.joinUrl);
+      }
+    });
+
+    let lastTopWrongQuestions = [];
+
+    socket.on('game_tick', (state) => {
+      gameState = state;
+      if (state.topWrongQuestions && state.topWrongQuestions.length > 0) {
+        lastTopWrongQuestions = state.topWrongQuestions;
+      }
+      updateUI();
+    });
+
+    socket.on('game_event_log', (event) => {
+      appendEventFeed(event);
+    });
+
+    socket.on('round_started', (data) => {
+      document.body.classList.remove('game-over');
+      Sound.correct();
+      confetti({ particleCount: 60, spread: 70, origin: { y: 0.2 } });
+    });
+
+    socket.on('pass_quiz_started', (data) => {
+      Sound.freeze();
+      showLiveQuizBanner({
+        type: 'PASS',
+        participants: `${data.passerAvatar || '🎓'} <b>${data.passerName}</b> ➔ ${data.targetAvatar || '🌸'} <b>${data.targetName}</b>`,
+        question: data.question,
+        options: data.options,
+        activePlayerName: data.passerName
+      });
+    });
+
+    socket.on('player_frozen_quiz', (data) => {
+      Sound.freeze();
+      showLiveQuizBanner({
+        type: 'UNLOCK',
+        participants: `❄️ ${data.playerAvatar || '🎓'} <b>${data.playerName}</b> đang bị đóng băng!`,
+        question: data.question,
+        options: data.options,
+        activePlayerName: data.playerName
+      });
+    });
+
+    // Đồng bộ hành vi chọn đáp án của học sinh lên màn hình TV của giáo viên
+    socket.on('quiz_option_hovered', (data) => {
+      const banner = document.getElementById('liveQuizBanner');
+      if (banner && !banner.classList.contains('hidden')) {
+        Sound.tick();
+        highlightSpectatorQuizOption(data.chosenIndex, data.playerName, data.playerAvatar);
+      }
+    });
+
+    // Tiết lộ kết quả đúng / sai và hiển thị giải thích kiến thức SGK Bài 30
+    socket.on('quiz_result_revealed', (data) => {
+      revealSpectatorQuizResult(data);
+    });
+
+    socket.on('bomb_passed', (data) => {
+      Sound.tick();
+      showTopAnnouncement({
+        title: `⚡ ${data.fromName} CHUYỀN BOM SANG ${data.toName}! (+5đ)`,
+        subtitle: `Bom đã sang tay ${data.toName}! Còn ${data.bombTimer}s!`,
+        type: 'warning',
+        icon: '⚡'
+      });
+    });
+
+    socket.on('chest_quiz_started', (data) => {
+      // Tối ưu trải nghiệm: KHÔNG mở liveQuizBanner toàn màn hình gây giật lag
+      // Kết quả đúng/sai sẽ được báo qua Thẻ Cảnh Báo Gỡ Lỗi nổi bật ở đáy và Live Activity Feed
+    });
+
+    socket.on('bomb_pass_success', (data) => {
+      // Result reveal handles animation
+    });
+
+    socket.on('bomb_pass_failed', (data) => {
+      // Result reveal handles animation
+    });
+
+    socket.on('player_unfrozen', (data) => {
+      // Result reveal handles animation
+    });
+
+    socket.on('treasure_rain_started', (data) => {
+      Sound.powerup();
+      showTopAnnouncement({
+        title: '⚠️ CƠN MƯA RƯƠNG DEBUG XUẤT HIỆN!',
+        subtitle: `Số lượng rương tăng gấp đôi (tối đa ${data.maxChests || 8} rương) • Trả lời đúng nhận x1.5 điểm (+30đ)!`,
+        type: 'chest',
+        icon: '🌧️'
+      });
+      confetti({ particleCount: 60, spread: 80, origin: { y: 0.15 } });
+    });
+
+    socket.on('treasure_rain_ended', () => {
+      showTopAnnouncement({
+        title: '🌤️ CƠN MƯA RƯƠNG ĐÃ QUA!',
+        subtitle: 'Đấu trường trở lại nhịp độ bình thường!',
+        type: 'info',
+        icon: '🌤️'
+      });
+    });
+
+    socket.on('game_reset', () => {
+      document.body.classList.remove('game-over');
+      lastLobbyRosterKey = '__RESET__';
+      lastSurvivalKey = '__RESET__';
+      lastTopWrongQuestions = [];
+      document.getElementById('summaryModal').classList.add('hidden');
+    });
+
+    socket.on('game_victory', (data) => {
+      Sound.correct();
+      confetti({ particleCount: 160, spread: 90, origin: { y: 0.3 } });
+      setTimeout(() => {
+        confetti({ particleCount: 100, spread: 110, origin: { y: 0.5 } });
+      }, 450);
+      if (data.topWrongQuestions && data.topWrongQuestions.length > 0) {
+        lastTopWrongQuestions = data.topWrongQuestions;
+      }
+      showVictorySummary(data.winner, data.rankings, lastTopWrongQuestions);
+    });
+
+    socket.on('player_teleported', (data) => {
+      Sound.teleport();
+      // Add teleport lightning ray
+      teleportRays.push({
+        name: data.name || '',
+        fromX: data.fromX,
+        fromY: data.fromY,
+        toX: data.toX,
+        toY: data.toY,
+        color: '#00CEC9',
+        life: 2.2,
+        maxLife: 2.2
+      });
+      // Shockwave at destination
+      shockwaves.push({
+        x: data.toX,
+        y: data.toY,
+        radius: 10,
+        maxRadius: 120,
+        color: '#00CEC9',
+        life: 0.6
+      });
+    });
+
+    // Cảnh báo người vừa nhận bom mới (Sóng xung kích đỏ quét rộng)
+    socket.on('new_bomb_round', (data) => {
+      Sound.freeze();
+      if (data.x !== undefined && data.y !== undefined) {
+        shockwaves.push({
+          x: data.x,
+          y: data.y,
+          radius: 20,
+          maxRadius: 360,
+          color: '#FF4757',
+          life: 1.0
+        });
+      }
+    });
+
+    socket.on('player_dashed', (data) => {
+      Sound.tick();
+      dashTrails.push({
+        x: data.x,
+        y: data.y,
+        dirX: data.dirX,
+        dirY: data.dirY,
+        life: 0.35
+      });
+    });
+
+    socket.on('player_exploded', (data) => {
+      Sound.explosion();
+      screenShake = 22;
+      hideLiveQuizBanner(); // Ẩn ngay câu hỏi khi bom nổ để đấu trường thông thoáng
+      shockwaves.push({
+        x: data.x,
+        y: data.y,
+        radius: 10,
+        maxRadius: 260,
+        color: '#FF4757',
+        life: 0.8
+      });
+      for (let i = 0; i < 50; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 120 + Math.random() * 320;
+        particles.push({
+          x: data.x,
+          y: data.y,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd,
+          color: Math.random() > 0.5 ? '#FF4757' : '#FFA502',
+          size: 5 + Math.random() * 6,
+          life: 0.9,
+          maxLife: 0.9
+        });
+      }
+    });
+
+    // ==========================================
+    // UI UPDATES
+    // ==========================================
+    function updateUI() {
+      const isLobby = (gameState.status === 'LOBBY');
+      const lobbyScreen = document.getElementById('lobbyScreen');
+      const arenaScreen = document.getElementById('arenaScreen');
+      const arenaFooter = document.getElementById('arenaFooter');
+
+      // Chuyển đổi màn hình: Sảnh quét QR hoặc Sân đấu Arena
+      if (isLobby) {
+        lobbyScreen.classList.remove('hidden');
+        arenaScreen.classList.add('hidden');
+        arenaFooter.classList.add('hidden');
+        updateLobbyRoster(gameState.players || []);
+      } else {
+        lobbyScreen.classList.add('hidden');
+        arenaScreen.classList.remove('hidden');
+        arenaFooter.classList.remove('hidden');
+      }
+
+      // Header stats & Lobby counter
+      const totalCount = gameState.rosterCount || 0;
+      const statPlayerCountEl = document.getElementById('statPlayerCount');
+      if (statPlayerCountEl) statPlayerCountEl.textContent = totalCount;
+      const lobbyPlayerCountEl = document.getElementById('lobbyPlayerCount');
+      if (lobbyPlayerCountEl) lobbyPlayerCountEl.textContent = totalCount;
+
+      // Cập nhật huy hiệu Bão Rương (Treasure Rain Event)
+      const rainPill = document.getElementById('statRainPill');
+      const rainTimerEl = document.getElementById('statRainTimer');
+      if (gameState.isTreasureRain && gameState.status === 'PLAYING') {
+        if (rainPill) rainPill.style.display = 'inline-flex';
+        if (rainTimerEl) rainTimerEl.textContent = Math.ceil(gameState.treasureRainTimer || 0) + 's';
+      } else {
+        if (rainPill) rainPill.style.display = 'none';
+      }
+
+      // Đếm ngược 7 phút tổng trận đấu
+      const matchTimerEl = document.getElementById('statMatchTimer');
+      const matchPill = document.getElementById('matchTimerPill');
+      const mSec = (gameState.matchTimer !== undefined) ? gameState.matchTimer : 420;
+      const mMin = Math.floor(mSec / 60);
+      const mRem = Math.floor(mSec % 60);
+      const mFormatted = `${mMin.toString().padStart(2, '0')}:${mRem.toString().padStart(2, '0')}`;
+      if (matchTimerEl) matchTimerEl.textContent = mFormatted;
+      if (matchPill) {
+        if (mSec <= 60 && gameState.status === 'PLAYING') {
+          matchPill.classList.add('urgent');
+          if (matchTimerEl) matchTimerEl.style.color = '#FF4757';
+        } else {
+          matchPill.classList.remove('urgent');
+          if (matchTimerEl) matchTimerEl.style.color = '#00CEC9';
+        }
+      }
+
+      // Timer Pill & Header Quiz Timer
+      const timerPill = document.getElementById('arenaTimerPill');
+      const timerVal = document.getElementById('arenaTimerVal');
+      const quizTimerVal = document.getElementById('quizTimerVal');
+      const quizHeaderTimerBadge = document.getElementById('quizHeaderTimerBadge');
+
+      if (gameState.status === 'PLAYING') {
+        timerPill.style.display = 'flex';
+        const timeSec = gameState.bombTimer || 0;
+        const timeStr = timeSec.toFixed(1);
+        timerVal.textContent = timeStr;
+        if (quizTimerVal) quizTimerVal.textContent = timeStr;
+
+        if (timeSec <= 5.0) {
+          timerPill.classList.add('urgent');
+          if (quizHeaderTimerBadge) quizHeaderTimerBadge.classList.add('urgent');
+          const curSec = Math.ceil(timeSec);
+          if (curSec !== lastBeepSec && curSec > 0) {
+            lastBeepSec = curSec;
+            Sound.beepUrgent(600 + (6 - curSec) * 150);
+          }
+        } else {
+          timerPill.classList.remove('urgent');
+          if (quizHeaderTimerBadge) quizHeaderTimerBadge.classList.remove('urgent');
+          lastBeepSec = -1;
+        }
+      } else if (gameState.status === 'INTERMISSION') {
+        timerPill.style.display = 'flex';
+        timerVal.textContent = 'BÙM!';
+        if (quizTimerVal) quizTimerVal.textContent = 'BÙM!';
+        timerPill.classList.add('urgent');
+      } else if (gameState.status === 'GAME_OVER') {
+        timerPill.style.display = 'none';
+        timerVal.textContent = '0.0';
+        if (quizTimerVal) quizTimerVal.textContent = '🏆';
+        timerPill.classList.remove('urgent');
+      } else {
+        timerPill.style.display = 'none';
+        timerPill.classList.remove('urgent');
+        if (quizHeaderTimerBadge) quizHeaderTimerBadge.classList.remove('urgent');
+      }
+
+      // Đồng bộ nhạc nền BGM theo trạng thái trận đấu
+      if (window.GameAudio && window.GameAudio.isMasterEnabled()) {
+        if (gameState.status === 'LOBBY') {
+          window.GameAudio.setBGMMode('lobby');
+        } else if (gameState.status === 'PLAYING') {
+          const isPanic = (gameState.bombTimer && gameState.bombTimer <= 5.0) || (gameState.matchTimer && gameState.matchTimer <= 60);
+          window.GameAudio.setBGMMode(isPanic ? 'panic' : 'battle');
+        } else if (gameState.status === 'GAME_OVER') {
+          window.GameAudio.setBGMMode('victory');
+        } else if (gameState.status === 'INTERMISSION') {
+          window.GameAudio.stopBGM();
+        }
+      }
+
+      // Host start button
+      const btnStart = document.getElementById('btnStartRound');
+      if (gameState.status === 'LOBBY') {
+        btnStart.textContent = '▶ BẮT ĐẦU TRẬN ĐẤU';
+      } else if (gameState.status === 'PLAYING') {
+        btnStart.textContent = `🎮 ĐANG THI ĐẤU (${totalCount} Học sinh)`;
+      } else if (gameState.status === 'GAME_OVER') {
+        btnStart.textContent = '👑 BẮT ĐẦU TRẬN MỚI';
+      } else {
+        btnStart.textContent = '▶ TIẾP TỤC';
+      }
+
+      // Survival Roster
+      renderSurvivalRoster(gameState.survivalRoster || []);
+    }
+
+    let lastLobbyRosterKey = '__INIT__';
+
+    // Hiển thị danh sách học sinh thật đã tham gia phòng chờ (KHÔNG dùng học sinh mẫu)
+    function updateLobbyRoster(playersList) {
+      const grid = document.getElementById('lobbyStudentGrid');
+      if (!grid) return;
+
+      const currentKey = (playersList || []).map(p => `${p.id}:${p.name}:${p.avatar}`).join('|');
+      if (currentKey === lastLobbyRosterKey) {
+        return; // Đã render rồi thì giữ nguyên DOM, KHÔNG xóa vẽ lại 60 lần/giây để triệt tiêu lỗi chớp giật!
+      }
+      lastLobbyRosterKey = currentKey;
+
+      if (!playersList || playersList.length === 0) {
+        grid.innerHTML = `
+          <div class="lobby-empty-hint">
+            <span style="font-size: 3rem;">⏳</span>
+            <span style="font-weight: 700; color: #fff;">Chưa có học sinh nào vào phòng!</span>
+            <span style="font-size: 0.95rem; color: #b2bec3;">Hãy dùng camera điện thoại hoặc Zalo quét mã QR bên trái để tham gia ngay!</span>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = '';
+      playersList.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'lobby-student-card';
+        card.innerHTML = `
+          <span class="lobby-student-avatar">${p.avatar || '🎓'}</span>
+          <div style="flex: 1; min-width: 0;">
+            <div class="lobby-student-name">${p.name}</div>
+            <div style="font-size: 0.8rem; color: #2ED573; font-weight: 700;">🟢 Đã sẵn sàng</div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    let lastSurvivalKey = '__INIT__';
+
+    function renderSurvivalRoster(list) {
+      const container = document.getElementById('survivalRosterList');
+      if (!container) return;
+
+      const currentKey = (list || []).map(p => `${p.id}:${p.isAlive}:${p.rank}:${p.hasBomb}:${p.score}:${p.isStunned}:${p.isInvisible}:${p.slowTimer}:${p.speedMultiplierTimer}:${p.scoreMultiplierTimer}`).join('|');
+      if (currentKey === lastSurvivalKey) {
+        return;
+      }
+      lastSurvivalKey = currentKey;
+
+      container.innerHTML = '';
+
+      if (list.length === 0) {
+        container.innerHTML = '<div style="color:#777; font-size:0.85rem; text-align:center; padding:12px;">Đang chuẩn bị đấu trường...</div>';
+        return;
+      }
+
+      list.forEach((p, idx) => {
+        const topClass = (idx === 0) ? 'top-1' : (idx === 1 ? 'top-2' : (idx === 2 ? 'top-3' : ''));
+        const row = document.createElement('div');
+        row.className = `lb-row ${topClass}`;
+
+        let statusBadge = '';
+        if (p.rank === 1 && gameState.status === 'GAME_OVER') {
+          statusBadge = '<span class="survival-badge winner">👑 QUÁN QUÂN</span>';
+        } else if (p.isStunned || p.isRespawning) {
+          statusBadge = '<span class="survival-badge" style="background:rgba(255,165,2,0.25); border:1px solid #FFA502; color:#FFA502;">⚡ CHOÁNG</span>';
+        } else if (p.isInvisible) {
+          statusBadge = '<span class="survival-badge" style="background:rgba(162,155,254,0.25); border:1px solid #A29BFE; color:#A29BFE;">👻 MỞ RƯƠNG</span>';
+        } else if (p.hasBomb) {
+          statusBadge = '<span class="survival-badge" style="background:rgba(255,71,87,0.25); border:1px solid #FF4757; color:#FF7675;">💣 GIỮ BOM</span>';
+        } else if (p.slowTimer > 0) {
+          statusBadge = `<span class="survival-badge" style="background:rgba(255,165,2,0.25); border:1px solid #FFA502; color:#FFA502;">🐌 CHẬM -30% (${p.slowTimer}s)</span>`;
+        } else if (p.speedMultiplierTimer > 0) {
+          statusBadge = `<span class="survival-badge" style="background:rgba(46,213,115,0.25); border:1px solid #2ED573; color:#2ED573;">👟 TĂNG TỐC</span>`;
+        } else if (p.scoreMultiplierTimer > 0) {
+          statusBadge = `<span class="survival-badge" style="background:rgba(255,215,0,0.25); border:1px solid #FFD700; color:#FFD700;">⚡ X2 ĐIỂM</span>`;
+        } else {
+          statusBadge = '<span class="survival-badge alive">🟢 ĐANG ĐUA ĐIỂM</span>';
+        }
+
+        const blinkBadge = p.hasTeleportCharge ? ' <span title="Đã nạp Tốc biến" style="color:#00CEC9; font-size:0.8rem;">⚡</span>' : '';
+
+        row.innerHTML = `
+          <div class="lb-left">
+            <span style="font-size:1.15rem;">${p.avatar || '🎓'}</span>
+            <div style="display:flex; flex-direction:column; min-width:0;">
+              <span class="lb-name" style="color:#fff">${p.name}${blinkBadge}</span>
+              <span style="font-size:0.75rem; color:#FFD700; font-weight:700;">⭐ ${p.score || 0} điểm</span>
+            </div>
+          </div>
+          <div>${statusBadge}</div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    let announceTimeout = null;
+    function showTopAnnouncement({ title, subtitle, type, icon }) {
+      const banner = document.getElementById('topAnnouncementBanner');
+      const iconEl = document.getElementById('topAnnounceIcon');
+      const titleEl = document.getElementById('topAnnounceTitle');
+      const subEl = document.getElementById('topAnnounceSub');
+      if (!banner) return;
+
+      if (announceTimeout) clearTimeout(announceTimeout);
+
+      banner.className = `top-announcement-banner ${type || 'info'} visible`;
+      if (iconEl) iconEl.textContent = icon || '📢';
+      if (titleEl) titleEl.textContent = title;
+      if (subEl) subEl.textContent = subtitle || '';
+
+      announceTimeout = setTimeout(() => {
+        banner.classList.remove('visible');
+      }, 3000);
+    }
+
+    socket.on('top_announcement', (data) => {
+      showTopAnnouncement(data);
+    });
+
+    function appendEventFeed(event) {
+      const list = document.getElementById('feedList');
+      if (!list) return;
+      const item = document.createElement('div');
+      item.className = `feed-item ${event.type || 'info'}`;
+      const timePrefix = event.time ? `<b>[${event.time}]</b> ` : '';
+      item.innerHTML = `${timePrefix}${event.message}`;
+      list.insertBefore(item, list.firstChild);
+
+      while (list.children.length > 7) {
+        list.removeChild(list.lastChild);
+      }
+    }
+
+    let bugAlertTimer = null;
+    function showBugAlertCard(data) {
+      const card = document.getElementById('bugAlertCard');
+      const nameEl = document.getElementById('bugStudentName');
+      const qEl = document.getElementById('bugQuestionText');
+      const ansEl = document.getElementById('bugCorrectAnswer');
+      const expEl = document.getElementById('bugExplainText');
+      if (!card) return;
+      if (bugAlertTimer) {
+        clearTimeout(bugAlertTimer);
+        bugAlertTimer = null;
+      }
+      if (nameEl) nameEl.textContent = data.playerName || 'Học sinh';
+      if (qEl) qEl.textContent = `"${data.questionText || 'Câu hỏi gỡ lỗi Bài 30'}"`;
+      if (ansEl) ansEl.textContent = `✅ ĐÁP ÁN: ${data.correctOption || 'Xem giải thích'}`;
+      if (expEl) expEl.textContent = data.explain ? ` — ${data.explain}` : '';
+      card.classList.remove('hidden');
+      bugAlertTimer = setTimeout(() => {
+        card.classList.add('hidden');
+        bugAlertTimer = null;
+      }, 3800);
+    }
+
+    // Hiển thị đầy đủ câu hỏi và 4 đáp án trên TV giáo viên
+    function showLiveQuizBanner({ type, participants, question, options, activePlayerName }) {
+      const banner = document.getElementById('liveQuizBanner');
+      const tag = document.getElementById('quizTypeTag');
+      const part = document.getElementById('quizParticipants');
+      const status = document.getElementById('quizLiveStatus');
+      const qText = document.getElementById('quizQuestionText');
+      const optsBox = document.getElementById('quizOptionsList');
+      const explainCard = document.getElementById('quizExplainCard');
+
+      if (explainCard) {
+        explainCard.style.display = 'none';
+        explainCard.textContent = '';
+      }
+
+      banner.classList.remove('hidden');
+
+      if (type === 'PASS') {
+        tag.className = 'quiz-type-tag pass';
+        tag.textContent = '⚡ THỬ THÁCH CHUYỀN BOM';
+      } else if (type === 'CHEST') {
+        tag.className = 'quiz-type-tag chest';
+        tag.textContent = '🎁 RƯƠNG BÁU TIN HỌC 10';
+      } else {
+        tag.className = 'quiz-type-tag unlock';
+        tag.textContent = '❄️ GIẢI CÂU HỎI MỞ KHÓA BĂNG';
+      }
+
+      const timerPill = document.getElementById('arenaTimerPill');
+      if (timerPill) timerPill.style.display = 'none';
+
+      part.innerHTML = participants;
+      status.textContent = `⏳ ${activePlayerName || 'Học sinh'} đang suy nghĩ...`;
+      qText.textContent = question;
+      optsBox.innerHTML = '';
+
+      const letters = ['A', 'B', 'C', 'D'];
+      (options || []).forEach((optText, idx) => {
+        const card = document.createElement('div');
+        card.className = 'quiz-opt-card';
+        card.id = `spectatorOpt_${idx}`;
+        card.innerHTML = `
+          <div class="opt-prefix">${letters[idx]}</div>
+          <div class="opt-content">${optText}</div>
+          <div class="opt-badge"></div>
+        `;
+        optsBox.appendChild(card);
+      });
+    }
+
+    // Đồng bộ trực tiếp thao tác chọn đáp án của học sinh lên TV (không scale, không vỡ layout)
+    function highlightSpectatorQuizOption(chosenIndex, playerName, playerAvatar) {
+      const opts = document.querySelectorAll('.quiz-opt-card');
+      opts.forEach(el => {
+        el.classList.remove('selected-by-student');
+        const badge = el.querySelector('.opt-badge');
+        if (badge) badge.textContent = '';
+      });
+
+      const letters = ['A', 'B', 'C', 'D'];
+      const chosenEl = document.getElementById(`spectatorOpt_${chosenIndex}`);
+      if (chosenEl) {
+        chosenEl.classList.add('selected-by-student');
+        const badge = chosenEl.querySelector('.opt-badge');
+        if (badge) badge.innerHTML = `👉 <b>${playerName}</b>`;
+      }
+
+      const status = document.getElementById('quizLiveStatus');
+      if (status) {
+        status.innerHTML = `👉 <b>${playerName}</b> đã chọn đáp án <b>${letters[chosenIndex] || ''}</b>...`;
+      }
+    }
+
+    // Tiết lộ kết quả đúng/sai trên màn hình giáo viên và giải thích kiến thức SGK Bài 30
+    function revealSpectatorQuizResult(data) {
+      if (data.isCorrect) {
+        Sound.correct();
+        confetti({ particleCount: 35, spread: 60, origin: { y: 0.85 } });
+        appendEventFeed({
+          message: `🟢 <b>${data.playerName || 'Học sinh'}</b> giải đúng rương: <span style="color:#2ED573;">${data.rewardName || '+20đ'}</span>`,
+          type: 'success'
+        });
+      } else {
+        Sound.wrong();
+        showBugAlertCard(data);
+        const qShort = data.questionText ? (data.questionText.length > 36 ? data.questionText.slice(0, 36) + '...' : data.questionText) : 'Bài 30';
+        appendEventFeed({
+          message: `🔴 <b>${data.playerName || 'Học sinh'}</b> chọn sai: "${qShort}" (-5đ)`,
+          type: 'error'
+        });
+      }
+
+      // Nếu có popup liveQuizBanner đang mở (ví dụ giải đố gỡ băng UNLOCK), cập nhật thẻ đáp án
+      const banner = document.getElementById('liveQuizBanner');
+      if (banner && !banner.classList.contains('hidden')) {
+        const chosenEl = document.getElementById(`spectatorOpt_${data.chosenIndex}`);
+        const correctEl = document.getElementById(`spectatorOpt_${data.correctIndex}`);
+        const status = document.getElementById('quizLiveStatus');
+        const explainCard = document.getElementById('quizExplainCard');
+
+        document.querySelectorAll('.quiz-opt-card').forEach(el => el.classList.remove('selected-by-student'));
+
+        if (data.isCorrect) {
+          if (chosenEl) {
+            chosenEl.classList.add('correct-revealed');
+            const badge = chosenEl.querySelector('.opt-badge');
+            if (badge) badge.textContent = '✅ ĐÚNG RỒI!';
+          }
+          if (status) {
+            status.innerHTML = `<span style="color:#2ED573; font-weight:800;">🎉 ${data.playerName} TRẢ LỜI CHÍNH XÁC!</span>`;
+          }
+          if (explainCard && data.explain) {
+            explainCard.style.display = 'block';
+            explainCard.innerHTML = `💡 <b>KIẾN THỨC BÀI 30:</b> ${data.explain}`;
+          }
+        } else {
+          if (chosenEl) {
+            chosenEl.classList.add('wrong-revealed');
+            const badge = chosenEl.querySelector('.opt-badge');
+            if (badge) badge.textContent = '❌ CHƯA ĐÚNG!';
+          }
+          if (correctEl) {
+            correctEl.classList.add('correct-revealed');
+            const badge = correctEl.querySelector('.opt-badge');
+            if (badge) badge.textContent = '✅ ĐÁP ÁN ĐÚNG';
+          }
+          if (status) {
+            status.innerHTML = `<span style="color:#FF4757; font-weight:800;">❌ ${data.playerName} CHƯA CHÍNH XÁC!</span>`;
+          }
+          if (explainCard && data.explain) {
+            explainCard.style.display = 'block';
+            explainCard.innerHTML = `💡 <b>GIẢI THÍCH (SGK BÀI 30):</b> ${data.explain}`;
+          }
+        }
+
+        // Giữ kết quả và giải thích 1.5s rồi tự động ẩn để không che tầm nhìn đấu trường
+        setTimeout(() => {
+          hideLiveQuizBanner();
+        }, 1500);
+      }
+    }
+
+    function hideLiveQuizBanner() {
+      const banner = document.getElementById('liveQuizBanner');
+      if (banner) banner.classList.add('hidden');
+      const timerPill = document.getElementById('arenaTimerPill');
+      if (timerPill) {
+        if (gameState && gameState.status === 'PLAYING') {
+          timerPill.style.display = 'flex';
+        } else {
+          timerPill.style.display = 'none';
+        }
+      }
+    }
+
+    // ==========================================
+    // ARENA 60 FPS RENDER LOOP
+    // ==========================================
+    const smoothPositions = new Map();
+
+    function renderArena() {
+      const w = arenaCanvas.width || 1600;
+      const h = arenaCanvas.height || 1000;
+
+      // Đảm bảo ma trận biến đổi và hiệu ứng bóng luôn được reset sạch sẽ mỗi khung hình
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = 'transparent';
+      ctx.globalAlpha = 1.0;
+      ctx.globalCompositeOperation = 'source-over';
+
+      // Xóa toàn bộ và vẽ nền đặc 100% không để lại vệt mờ
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#090714';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.save();
+      // Screen shake (chỉ tác động lên các vật thể trong sàn đấu)
+      if (screenShake > 0) {
+        const sx = (Math.random() - 0.5) * screenShake;
+        const sy = (Math.random() - 0.5) * screenShake;
+        ctx.translate(sx, sy);
+        screenShake *= 0.88;
+        if (screenShake < 0.2) screenShake = 0;
+      }
+
+      ctx.strokeStyle = 'rgba(108, 92, 231, 0.12)';
+      ctx.lineWidth = 1;
+      const gridSize = 50;
+      for (let x = 0; x <= w; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= h; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Border
+      ctx.strokeStyle = '#6C5CE7';
+      ctx.lineWidth = 8;
+      ctx.shadowColor = '#6C5CE7';
+      ctx.shadowBlur = 18;
+      ctx.strokeRect(16, 16, w - 32, h - 32);
+      ctx.shadowBlur = 0;
+
+      // 2. Obstacles
+      (arenaConfig.obstacles || []).forEach(obs => {
+        ctx.save();
+        if (obs.type === 'circle') {
+          const grad = ctx.createRadialGradient(obs.x - 10, obs.y - 10, 6, obs.x, obs.y, obs.radius);
+          grad.addColorStop(0, '#6C5CE7');
+          grad.addColorStop(1, '#1b143b');
+          ctx.beginPath();
+          ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#A29BFE';
+          ctx.shadowColor = '#6C5CE7';
+          ctx.shadowBlur = 14;
+          ctx.stroke();
+
+          // Core chip
+          ctx.fillStyle = '#00CEC9';
+          ctx.beginPath();
+          ctx.arc(obs.x, obs.y, 10, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (obs.type === 'rect') {
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(obs.x, obs.y, obs.width, obs.height, obs.radius || 12);
+          } else {
+            ctx.rect(obs.x, obs.y, obs.width, obs.height);
+          }
+          ctx.fillStyle = '#171333';
+          ctx.fill();
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#00CEC9';
+          ctx.shadowColor = '#00CEC9';
+          ctx.shadowBlur = 10;
+          ctx.stroke();
+        }
+        ctx.restore();
+      });
+
+      // 3. Dash Trails
+      for (let i = dashTrails.length - 1; i >= 0; i--) {
+        const t = dashTrails[i];
+        t.life -= 0.02;
+        if (t.life <= 0) { dashTrails.splice(i, 1); continue; }
+        ctx.save();
+        ctx.strokeStyle = `rgba(0, 206, 201, ${t.life * 2})`;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(t.x, t.y);
+        ctx.lineTo(t.x - t.dirX * 70, t.y - t.dirY * 70);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 4. Teleport Rays / Warp Laser Trails
+      for (let i = teleportRays.length - 1; i >= 0; i--) {
+        const ray = teleportRays[i];
+        ray.life -= 0.016;
+        if (ray.life <= 0) { teleportRays.splice(i, 1); continue; }
+        const alpha = Math.min(1.0, ray.life / 1.5);
+        ctx.save();
+        // Laser trail outer glow
+        ctx.strokeStyle = `rgba(0, 206, 201, ${alpha * 0.75})`;
+        ctx.lineWidth = 8;
+        ctx.shadowColor = '#00CEC9';
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.moveTo(ray.fromX, ray.fromY);
+        ctx.lineTo(ray.toX, ray.toY);
+        ctx.stroke();
+
+        // Laser core with animated moving dashes
+        ctx.setLineDash([16, 10]);
+        ctx.lineDashOffset = -(Date.now() / 15) % 26;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Origin marker
+        ctx.beginPath();
+        ctx.arc(ray.fromX, ray.fromY, 18, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(162, 155, 254, ${alpha})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // 5. Shockwaves
+      for (let i = shockwaves.length - 1; i >= 0; i--) {
+        const sw = shockwaves[i];
+        sw.radius += 8;
+        sw.life -= 0.03;
+        if (sw.life <= 0 || sw.radius >= sw.maxRadius) { shockwaves.splice(i, 1); continue; }
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 71, 87, ${sw.life})`;
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 6. Explosion Particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * 0.016;
+        p.y += p.vy * 0.016;
+        p.life -= 0.016;
+        if (p.life <= 0) { particles.splice(i, 1); continue; }
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * (p.life / p.maxLife), 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 6.5. RƯƠNG BÁU TRẮC NGHIỆM (TREASURE CHESTS)
+      (gameState.chests || []).forEach(chest => {
+        ctx.save();
+        const bob = Math.sin((Date.now() + chest.x) / 180) * 5;
+        const cx = chest.x;
+        const cy = chest.y + bob;
+
+        // Vòng hào quang vàng lấp lánh
+        const grad = ctx.createRadialGradient(cx, cy, 4, cx, cy, 38);
+        grad.addColorStop(0, 'rgba(255, 215, 0, 0.45)');
+        grad.addColorStop(1, 'rgba(255, 215, 0, 0)');
+        ctx.beginPath();
+        ctx.arc(cx, cy, 38, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Viền xoay vàng neon (không dùng shadowBlur nặng nề)
+        ctx.beginPath();
+        ctx.arc(cx, cy, 28, 0, Math.PI * 2);
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Biểu tượng Rương báu
+        ctx.font = '28px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🎁', cx, cy + 2);
+
+        // Số lượt trả lời còn lại / Trạng thái đang mở
+        if (chest.isBeingOpened) {
+          ctx.font = 'bold 11px Outfit, sans-serif';
+          ctx.fillStyle = '#FFA502';
+          ctx.fillText(`🔒 ĐANG MỞ... (${chest.attemptsLeft}/2)`, cx, cy - 30);
+        } else {
+          ctx.font = 'bold 11px Outfit, sans-serif';
+          ctx.fillStyle = (chest.decayTimer !== undefined && chest.decayTimer <= 5) ? '#FFA502' : '#FFD700';
+          const decayHint = (chest.decayTimer !== undefined && chest.decayTimer <= 5) ? ` ⏳${Math.ceil(chest.decayTimer)}s` : '';
+          ctx.fillText(`⭐ ${chest.attemptsLeft}/2 lượt${decayHint}`, cx, cy - 30);
+        }
+
+        ctx.restore();
+      });
+
+      // 7. Players (Hỗ trợ 40 học sinh với bộ lọc mượt hóa nội suy Lerp chống giật)
+      const playersList = gameState.players || [];
+      const immuneId = gameState.immunePlayerId;
+      const graceTimer = gameState.graceTimer;
+      const currentAliveIds = new Set();
+
+      playersList.forEach(p => {
+        if (!p.isAlive) return;
+        currentAliveIds.add(p.id);
+
+        let sp = smoothPositions.get(p.id);
+        if (!sp) {
+          sp = { x: p.x, y: p.y };
+          smoothPositions.set(p.id, sp);
+        } else {
+          const dx = p.x - sp.x;
+          const dy = p.y - sp.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 180) {
+            // Tốc biến hoặc dịch chuyển: gán tức thì không bị kéo dài
+            sp.x = p.x;
+            sp.y = p.y;
+          } else {
+            // Nội suy mềm loại bỏ hoàn toàn rung giật vật lý
+            sp.x += dx * 0.35;
+            sp.y += dy * 0.35;
+          }
+        }
+
+        ctx.save();
+        ctx.translate(sp.x, sp.y);
+
+        // TÀNG HÌNH khi đang trả lời câu hỏi rương báu (Miễn nhiễm bom)
+        if (p.isInvisible) {
+          ctx.globalAlpha = 0.35;
+          ctx.beginPath();
+          ctx.arc(0, 0, 36, 0, Math.PI * 2);
+          ctx.strokeStyle = '#A29BFE';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // BỊ CHOÁNG / KHỐNG CHẾ
+        if (p.isStunned) {
+          ctx.font = '22px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('⚡😵', 0, -44);
+        }
+
+        // Miễn nhiễm (Grace Period)
+        if (p.id === immuneId && graceTimer > 0) {
+          ctx.beginPath();
+          ctx.arc(0, 0, 36, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(84, 160, 255, 0.85)';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([6, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Hiệu ứng "Lỗi biên dịch" (Compile Error Slow -30% trong 3s)
+        if (p.slowTimer > 0) {
+          ctx.beginPath();
+          ctx.arc(0, 0, 32, 0, Math.PI * 2);
+          ctx.strokeStyle = '#FFA502';
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.font = 'bold 12px sans-serif';
+          ctx.fillStyle = '#FFA502';
+          ctx.textAlign = 'center';
+          ctx.fillText(`🐌 -30% (${p.slowTimer}s)`, 0, -42);
+        }
+
+        // Hiệu ứng Tăng tốc +35%
+        if (p.speedMultiplierTimer > 0) {
+          ctx.beginPath();
+          ctx.arc(0, 0, 30, 0, Math.PI * 2);
+          ctx.strokeStyle = '#2ED573';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.font = 'bold 11px sans-serif';
+          ctx.fillStyle = '#2ED573';
+          ctx.textAlign = 'center';
+          ctx.fillText('👟 +35%', 0, -42);
+        }
+
+        // Hiệu ứng Tích điểm x2
+        if (p.scoreMultiplierTimer > 0) {
+          ctx.beginPath();
+          ctx.arc(0, 0, 34, 0, Math.PI * 2);
+          ctx.strokeStyle = '#FFD700';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.font = 'bold 11px sans-serif';
+          ctx.fillStyle = '#FFD700';
+          ctx.textAlign = 'center';
+          ctx.fillText('⚡ X2 ĐIỂM', 0, -42);
+        }
+
+        // Đang bị ĐÓNG BĂNG (Freezing Ice Shield)
+        if (p.isFrozen) {
+          ctx.beginPath();
+          ctx.arc(0, 0, 38, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(0, 206, 201, 0.25)';
+          ctx.fill();
+          ctx.strokeStyle = '#00CEC9';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          // Icon khóa băng trên đầu
+          ctx.font = '22px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('❄️🔒', 0, -42);
+        }
+
+        // VÙNG NGUY HIỂM ĐỎ RỰC DƯỚI CHÂN NGƯỜI GIỮ BOM (DỄ NHẬN BIẾT 100%)
+        if (p.hasBomb) {
+          const nowMs = Date.now();
+          const pulse = Math.sin(nowMs / 120) * 8;
+
+          const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, 56 + pulse);
+          grad.addColorStop(0, 'rgba(255, 71, 87, 0.55)');
+          grad.addColorStop(0.7, 'rgba(255, 71, 87, 0.2)');
+          grad.addColorStop(1, 'rgba(255, 71, 87, 0)');
+          ctx.beginPath();
+          ctx.arc(0, 0, 56 + pulse, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(0, 0, 44 + pulse * 0.5, 0, Math.PI * 2);
+          ctx.strokeStyle = '#FF4757';
+          ctx.lineWidth = 3.5;
+          ctx.setLineDash([8, 6]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Thân người chơi (Circle)
+        ctx.beginPath();
+        ctx.arc(0, 0, p.hasBomb ? 25 : 22, 0, Math.PI * 2);
+        ctx.fillStyle = p.hasBomb ? '#FF4757' : (p.color || '#6C5CE7');
+        ctx.fill();
+        ctx.lineWidth = p.hasBomb ? 5 : 3;
+        ctx.strokeStyle = '#ffffff';
+        if (p.hasBomb) {
+          ctx.shadowColor = '#FF4757';
+          ctx.shadowBlur = 28;
+        } else {
+          ctx.shadowBlur = 0;
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Avatar
+        ctx.font = p.hasBomb ? '24px sans-serif' : '20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.avatar || '🎓', 0, 2);
+
+        // Tên học sinh + Điểm số tích lũy + Buff
+        let label = `${p.name} • ${p.score || 0}đ`;
+        if (p.scoreMultiplier > 1) label += ' ⚡x2';
+        ctx.fillStyle = p.hasBomb ? '#FFD700' : '#ffffff';
+        ctx.font = p.hasBomb ? '900 13px Outfit, sans-serif' : 'bold 12px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, 0, p.hasBomb ? -32 : -28);
+
+        // Quả bom bốc cháy đung đưa nếu đang giữ bom
+        if (p.hasBomb) {
+          const nowMs = Date.now();
+          const bob = Math.sin(nowMs / 140) * 5;
+          ctx.font = '34px sans-serif';
+          ctx.fillText('💣', 0, -56 + bob);
+
+          const bSec = Math.ceil(gameState.bombTimer || 0);
+          ctx.fillStyle = '#FF4757';
+          ctx.font = '900 13px "Bungee", cursive';
+          ctx.fillText(`⚠️ BOM (${bSec}s)`, 0, -82);
+        }
+
+        ctx.restore();
+      });
+
+      ctx.restore();
+      requestAnimationFrame(renderArena);
+    }
+
+    // Start 60 FPS loop
+    requestAnimationFrame(renderArena);
+
+    // ==========================================
+    
+    // ==========================================
+    // QR ZOOM MODAL LOGIC (DÀNH CHO HỌC SINH QUÉT XA)
+    // ==========================================
+    let qrZoomObj = null;
+
+    function openQrZoom() {
+      const modal = document.getElementById('qrZoomModal');
+      const box = document.getElementById('qrZoomCodeBox');
+      const linkText = document.getElementById('qrZoomLinkText');
+      if (!modal || !box) return;
+
+      if (linkText) linkText.textContent = currentJoinUrl;
+
+      box.innerHTML = '';
+      qrZoomObj = new QRCode(box, {
+        text: currentJoinUrl,
+        width: 360,
+        height: 360,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeQrZoom() {
+      const modal = document.getElementById('qrZoomModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    const btnOpenQr = document.getElementById('btnOpenQrZoom');
+    if (btnOpenQr) btnOpenQr.addEventListener('click', openQrZoom);
+
+    const btnClickQr = document.getElementById('btnClickQrToZoom');
+    if (btnClickQr) btnClickQr.addEventListener('click', openQrZoom);
+
+    const btnCloseQr = document.getElementById('btnCloseQrZoom');
+    if (btnCloseQr) btnCloseQr.addEventListener('click', closeQrZoom);
+
+    const btnModalCloseQr = document.getElementById('btnModalCloseQrZoom');
+    if (btnModalCloseQr) btnModalCloseQr.addEventListener('click', closeQrZoom);
+
+    const qrZoomModal = document.getElementById('qrZoomModal');
+    if (qrZoomModal) {
+      qrZoomModal.addEventListener('click', (e) => {
+        if (e.target === qrZoomModal) closeQrZoom();
+      });
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeQrZoom();
+    });
+
+    // DYNAMIC QR CODE CHO MÀN HÌNH PHÒNG CHỜ
+    // (Tự động nhận diện Render.com, Cloud hoặc IP Wi-Fi của giáo viên)
+    // ==========================================
+    let currentJoinUrl = window.location.origin;
+    let lobbyQrObj = null;
+
+    function renderLobbyQRCode(url) {
+      if (!url) return;
+      currentJoinUrl = url;
+
+      const lobbyUrlText = document.getElementById('lobbyJoinUrlText');
+      if (lobbyUrlText) lobbyUrlText.textContent = currentJoinUrl;
+
+      const lobbyQrContainer = document.getElementById('lobbyQrcodeBox');
+      if (lobbyQrContainer) {
+        lobbyQrContainer.innerHTML = '';
+        lobbyQrObj = new QRCode(lobbyQrContainer, {
+          text: currentJoinUrl,
+          width: 220,
+          height: 220,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+    }
+
+    // Tự động lấy URL thực tế từ máy chủ (IP Wi-Fi thật hoặc Render.com)
+    fetch('/api/server-info')
+      .then(res => res.json())
+      .then(info => {
+        if (info && (info.joinUrl || info.url)) {
+          renderLobbyQRCode(info.joinUrl || info.url);
+        } else {
+          renderLobbyQRCode(window.location.origin);
+        }
+      })
+      .catch(err => {
+        console.warn('Lỗi lấy server info:', err);
+        renderLobbyQRCode(window.location.origin);
+      });
+
+    // Nút chỉnh sửa link phòng thủ công nếu dùng LocalTunnel, Ngrok hoặc Cloud
+    const btnEditJoin = document.getElementById('btnEditJoinUrl');
+    if (btnEditJoin) {
+      btnEditJoin.addEventListener('click', () => {
+        const newUrl = prompt('Nhập địa chỉ link mới để tạo mã QR (ví dụ link localtunnel, ngrok, hoặc domain Render):', currentJoinUrl);
+        if (newUrl && newUrl.trim()) {
+          renderLobbyQRCode(newUrl.trim());
+        }
+      });
+    }
+
+    // Xử lý nút Bắt đầu trận đấu (cả ở màn hình chính lẫn thanh điều khiển)
+    const startRoundHandler = () => {
+      window.GameAudio?.init();
+      if (soundEnabled && window.GameAudio) {
+        window.GameAudio.playBGM('battle');
+      }
+      socket.emit('host_start_round');
+    };
+    document.getElementById('btnStartRound').addEventListener('click', startRoundHandler);
+    const btnLobbyStart = document.getElementById('btnLobbyStartRound');
+    if (btnLobbyStart) btnLobbyStart.addEventListener('click', startRoundHandler);
+
+    // Xử lý nút Thêm Bot (chỉ giữ lại 1 nút thêm bot theo yêu cầu)
+    const addBotHandler = () => {
+      socket.emit('host_add_bot');
+    };
+    const btnAddBot = document.getElementById('btnAddBot');
+    if (btnAddBot) btnAddBot.addEventListener('click', addBotHandler);
+    const btnLobbyAddBot = document.getElementById('btnLobbyAddBot');
+    if (btnLobbyAddBot) btnLobbyAddBot.addEventListener('click', addBotHandler);
+
+    // Xử lý nút Xóa Bot
+    const removeBotsHandler = () => {
+      socket.emit('host_remove_bots');
+    };
+    const btnRemoveBots = document.getElementById('btnRemoveBots');
+    if (btnRemoveBots) btnRemoveBots.addEventListener('click', removeBotsHandler);
+    const btnLobbyRemoveBots = document.getElementById('btnLobbyRemoveBots');
+    if (btnLobbyRemoveBots) btnLobbyRemoveBots.addEventListener('click', removeBotsHandler);
+
+    // Xử lý nút Reset về phòng chờ
+    document.getElementById('btnResetGame').addEventListener('click', () => {
+      if (confirm('Làm mới điểm số và quay về màn hình phòng chờ quét mã?')) {
+        socket.emit('host_reset_game');
+      }
+    });
+
+    // Bật/tắt âm thanh & nhạc nền BGM
+    const toggleSoundHandler = () => {
+      const enabled = window.GameAudio ? window.GameAudio.toggleMaster() : !soundEnabled;
+      soundEnabled = enabled;
+      const text = enabled ? '🔊 Âm thanh: BẬT' : '🔇 Âm thanh: TẮT';
+      document.querySelectorAll('#btnSoundToggle, #btnLobbySoundToggle').forEach(btn => {
+        btn.textContent = text;
+        btn.style.opacity = enabled ? '1' : '0.6';
+      });
+      if (enabled && window.GameAudio) {
+        if (gameState.status === 'LOBBY') window.GameAudio.playBGM('lobby');
+        else if (gameState.status === 'PLAYING') window.GameAudio.playBGM('battle');
+      }
+    };
+    document.getElementById('btnSoundToggle').addEventListener('click', toggleSoundHandler);
+    const btnLobbySound = document.getElementById('btnLobbySoundToggle');
+    if (btnLobbySound) btnLobbySound.addEventListener('click', toggleSoundHandler);
+
+    // Summary & Victory Modal
+    function showVictorySummary(winner, rankings, topWrongQuestions = lastTopWrongQuestions) {
+      document.body.classList.add('game-over');
+      const liveQuiz = document.getElementById('liveQuizBanner');
+      if (liveQuiz) liveQuiz.classList.add('hidden');
+      const topAnnounce = document.getElementById('topAnnouncementBanner');
+      if (topAnnounce) topAnnounce.classList.remove('visible');
+      const bugAlert = document.getElementById('bugAlertCard');
+      if (bugAlert) bugAlert.classList.add('hidden');
+      const modal = document.getElementById('summaryModal');
+      modal.classList.remove('hidden');
+
+      const timerPill = document.getElementById('arenaTimerPill');
+      if (timerPill) timerPill.style.display = 'none';
+
+      const isTimeOut = (gameState.matchTimer <= 0.1);
+      const titleText = isTimeOut ? 'KẾT THÚC 5 PHÚT TRANH TÀI' : 'QUÁN QUÂN ĐẤU TRƯỜNG BÀI 30';
+      const subBadge = '👑 VINH DANH HỌC SINH CAO ĐIỂM NHẤT LỚP 👑';
+
+      const wrongList = (topWrongQuestions && topWrongQuestions.length > 0) ? topWrongQuestions : lastTopWrongQuestions;
+      let wrongQuestionsHtml = '';
+      if (wrongList && wrongList.length > 0) {
+        wrongQuestionsHtml = `
+          <div style="width: 100%; margin-top: 14px; background: rgba(255, 71, 87, 0.08); border: 2px dashed rgba(255, 71, 87, 0.45); border-radius: 16px; padding: 14px 20px; text-align: left;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid rgba(255, 71, 87, 0.3); padding-bottom: 8px;">
+              <div style="font-family: 'Bungee', cursive; font-size: 1.05rem; color: #FFA502; display: flex; align-items: center; gap: 8px;">
+                <span>📊</span> CỦNG CỐ KIẾN THỨC BÀI 30: CÂU HỎI NHIỀU BẠN CHỌN SAI NHẤT
+              </div>
+              <span style="font-size: 0.8rem; color: #dfe6e9; background: rgba(0,0,0,0.45); padding: 3px 8px; border-radius: 6px;">Giáo viên phân tích nhanh cho cả lớp</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${wrongList.map((q, qIdx) => `
+                <div style="background: rgba(18, 14, 38, 0.9); border-left: 4px solid #FF4757; border-radius: 8px; padding: 10px 14px;">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                    <div style="font-weight: 700; color: #fff; font-size: 0.92rem; line-height: 1.4;">
+                      <span style="color: #FF4757; font-family: 'Bungee';">#${qIdx + 1}</span> ${q.question}
+                    </div>
+                    <span style="background: rgba(255, 71, 87, 0.25); color: #FF6B81; border: 1px solid #FF4757; font-size: 0.78rem; font-weight: 800; padding: 2px 8px; border-radius: 20px; white-space: nowrap;">
+                      ⚠️ ${q.wrongCount} lượt sai
+                    </span>
+                  </div>
+                  ${q.code ? `<pre style="background: #000; color: #00CEC9; padding: 6px 10px; border-radius: 6px; font-size: 0.82rem; margin: 6px 0; overflow-x: auto; font-family: monospace;"><code>${q.code}</code></pre>` : ''}
+                  <div style="margin-top: 5px; font-size: 0.88rem; color: #2ED573; font-weight: 700;">
+                    ✅ ĐÁP ÁN: ${q.correctAnswer}
+                  </div>
+                  ${q.explain ? `
+                    <div style="margin-top: 3px; font-size: 0.82rem; color: #b2bec3; font-style: italic;">
+                      💡 <b style="color: #f1f2f6;">Ghi nhớ SGK:</b> ${q.explain}
+                    </div>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else {
+        wrongQuestionsHtml = `
+          <div style="width: 100%; margin-top: 14px; background: rgba(46, 213, 115, 0.1); border: 2px dashed rgba(46, 213, 115, 0.45); border-radius: 16px; padding: 12px 18px; text-align: center; color: #2ED573; font-weight: 700;">
+            🎉 XUẤT SẮC! Cả lớp không có câu hỏi nào bị làm sai nhiều! Kiến thức kiểm thử & gỡ lỗi Bài 30 đã được nắm rất vững!
+          </div>
+        `;
+      }
+
+      // CHỈ VINH DANH DUY NHẤT 1 BẠN CAO ĐIỂM NHẤT LỚP (QUÁN QUÂN TOÀN NĂNG)
+      const card = modal.querySelector('.summary-card');
+      card.innerHTML = `
+        <div style="font-size: 4rem; filter: drop-shadow(0 0 25px rgba(255,215,0,0.9)); margin-bottom: -4px;">👑 🏆 🎉</div>
+        <h2 class="summary-title" style="color: #FFD700; font-size: 2rem; margin-top: 0;">${titleText}</h2>
+        
+        <div style="background: radial-gradient(circle, rgba(255,215,0,0.2) 0%, rgba(32,23,62,0.9) 100%); border: 3px solid #FFD700; border-radius: 24px; padding: 22px 36px; width: 100%; max-width: 620px; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);">
+          <div style="font-size: 4.8rem; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));">${winner ? (winner.avatar || '🎓') : '🎓'}</div>
+          <div style="font-family: 'Bungee', cursive; font-size: 2.2rem; color: #fff; letter-spacing: 1px;">${winner ? winner.name : 'Người chiến thắng'}</div>
+          <div style="color: #FFD700; font-weight: 800; font-size: 1.55rem; letter-spacing: 0.5px;">⭐ TỔNG ĐIỂM: ${winner ? (winner.score || 0) : 0} ĐIỂM ⭐</div>
+          <div style="color: #2ED573; font-weight: 800; font-size: 1.15rem; letter-spacing: 0.5px; background: rgba(46, 213, 115, 0.15); border: 1.5px solid #2ED573; border-radius: 30px; padding: 5px 20px;">${subBadge}</div>
+        </div>
+
+        ${wrongQuestionsHtml}
+
+        <div style="display: flex; gap: 12px; margin-top: 14px;">
+          <button class="btn btn-primary" id="btnRestartGame" style="font-size: 1.1rem; padding: 12px 28px;">
+            🚀 BẮT ĐẦU TRẬN ĐẤU MỚI
+          </button>
+          <button class="btn btn-secondary" id="btnBackToLobby" style="font-size: 1.1rem; padding: 12px 24px;">
+            🏠 VỀ SẢNH CHỜ
+          </button>
+        </div>
+      `;
+
+      document.getElementById('btnRestartGame').addEventListener('click', () => {
+        document.body.classList.remove('game-over');
+        modal.classList.add('hidden');
+        socket.emit('host_start_round');
+      });
+
+      document.getElementById('btnBackToLobby').addEventListener('click', () => {
+        document.body.classList.remove('game-over');
+        modal.classList.add('hidden');
+        socket.emit('host_reset_game');
+      });
+    }
+
+    document.getElementById('btnOpenSummary').addEventListener('click', () => {
+      showVictorySummary(gameState.winner, gameState.survivalRoster, lastTopWrongQuestions);
+    });
+
+    const closeSummaryBtn = document.getElementById('btnCloseSummary');
+    if (closeSummaryBtn) {
+      closeSummaryBtn.addEventListener('click', () => {
+        document.body.classList.remove('game-over');
+        document.getElementById('summaryModal').classList.add('hidden');
+      });
+    }
+  </script>
+</body>
+</html>

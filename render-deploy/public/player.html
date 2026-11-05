@@ -1,0 +1,2592 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Đấu Trường Bom Tin Học 10 - Bài 30: Kiểm Thử và Gỡ Lỗi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&family=Bungee&display=swap" rel="stylesheet">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/sound-engine.js"></script>
+  <style>
+    :root {
+      --primary: #FF2E7E;
+      --secondary: #6C5CE7;
+      --accent: #FFA502;
+      --green: #2ED573;
+      --cyan: #00CEC9;
+      --gold: #FFD700;
+      --dark: #0A0815;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 30%, #1a1033 0%, #080612 100%);
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* VIGNETTE WARNING (WHEN HOLDING BOMB) */
+    .vignette-bomb {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      box-shadow: inset 0 0 60px rgba(255, 71, 87, 0.85), inset 0 0 120px rgba(255, 71, 87, 0.55);
+      z-index: 40;
+      animation: pulse-vignette 0.5s infinite alternate;
+      display: none;
+    }
+
+    /* VIGNETTE ICE (WHEN FROZEN) */
+    .vignette-frozen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      box-shadow: inset 0 0 70px rgba(0, 206, 201, 0.85), inset 0 0 140px rgba(0, 206, 201, 0.6);
+      z-index: 40;
+      animation: pulse-ice 0.6s infinite alternate;
+      display: none;
+    }
+
+    @keyframes pulse-vignette {
+      0% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    @keyframes pulse-ice {
+      0% { opacity: 0.6; }
+      100% { opacity: 1; }
+    }
+
+    /* SCREEN 1: LOGIN / JOIN */
+    .view-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 30;
+      transition: opacity 0.3s ease;
+      overflow-y: auto;
+    }
+
+    .view-screen.hidden {
+      display: none !important;
+    }
+
+    .login-card {
+      background: rgba(22, 16, 46, 0.96);
+      border: 2px solid rgba(108, 92, 231, 0.55);
+      border-radius: 20px;
+      padding: 12px 20px;
+      width: 95%;
+      max-width: 660px;
+      max-height: 94vh;
+      max-height: 94dvh;
+      box-shadow: 0 0 35px rgba(108, 92, 231, 0.4);
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 16px;
+      align-items: center;
+      text-align: left;
+      backdrop-filter: blur(10px);
+    }
+
+    .login-col-left {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .login-col-right {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: center;
+    }
+
+    .login-badge {
+      background: linear-gradient(135deg, #FF2E7E, #FFA502);
+      font-family: 'Bungee', cursive;
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 12px;
+      display: inline-block;
+      align-self: flex-start;
+      letter-spacing: 0.5px;
+    }
+
+    .login-title {
+      font-family: 'Bungee', cursive;
+      font-size: 1.12rem;
+      background: linear-gradient(135deg, #A29BFE, #FF7675);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.2;
+    }
+
+    .input-group {
+      text-align: left;
+    }
+
+    .input-group label {
+      font-size: 0.72rem;
+      color: #ffb8d9;
+      margin-bottom: 3px;
+      display: block;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .input-control {
+      width: 100%;
+      padding: 7px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(10, 8, 20, 0.85);
+      color: #fff;
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .input-control:focus {
+      border-color: #00CEC9;
+      box-shadow: 0 0 10px rgba(0, 206, 201, 0.5);
+    }
+
+    .avatar-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 3px;
+    }
+
+    .avatar-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 2px solid transparent;
+      border-radius: 10px;
+      font-size: 1.25rem;
+      padding: 5px 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .avatar-btn.selected {
+      border-color: #FFD700;
+      background: rgba(255, 215, 0, 0.25);
+      transform: scale(1.08);
+    }
+
+    .btn-submit {
+      background: linear-gradient(135deg, #6C5CE7, #00CEC9);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 9px 14px;
+      font-family: 'Bungee', cursive;
+      font-size: 0.95rem;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 206, 201, 0.4);
+      margin-top: 4px;
+      width: 100%;
+      letter-spacing: 0.5px;
+    }
+
+    /* Narrow portrait fallback */
+    @media (max-width: 580px) and (orientation: portrait) {
+      .login-card {
+        grid-template-columns: 1fr;
+        max-width: 360px;
+        padding: 16px;
+        gap: 12px;
+        overflow-y: auto;
+      }
+      .avatar-grid {
+        grid-template-columns: repeat(6, 1fr);
+      }
+    }
+
+    /* SCREEN 2: GAMEPLAY CONTROLLER */
+    .game-screen {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* TOP HUD */
+    .hud-top-bar {
+      position: absolute;
+      top: 6px;
+      left: 8px;
+      right: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .hud-left {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(13, 10, 28, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 3px 10px;
+      border-radius: 16px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    }
+
+    .hud-score {
+      font-family: 'Bungee', cursive;
+      color: var(--gold);
+      font-size: 0.78rem;
+    }
+
+    .hud-right {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hud-sound-btn {
+      background: rgba(18, 14, 38, 0.85);
+      border: 1.5px solid rgba(108, 92, 231, 0.6);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      cursor: pointer;
+      color: #fff;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .hud-sound-btn.muted {
+      opacity: 0.55;
+      border-color: #FF4757;
+      background: rgba(255, 71, 87, 0.2);
+    }
+
+    /* TOP-CENTER EVENT PILL FOR MOBILE */
+    .player-top-announce {
+      position: absolute;
+      top: 40px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(15, 11, 35, 0.95);
+      border: 1.5px solid var(--accent);
+      border-radius: 20px;
+      padding: 4px 14px;
+      z-index: 35;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      white-space: nowrap;
+    }
+
+    .player-top-announce.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .player-top-announce.correct {
+      border-color: #2ED573;
+      box-shadow: 0 0 16px rgba(46, 213, 115, 0.6);
+    }
+
+    .player-top-announce.wrong {
+      border-color: #FF4757;
+      box-shadow: 0 0 16px rgba(255, 71, 87, 0.6);
+    }
+
+    .player-top-announce.eliminated {
+      border-color: #FF2E7E;
+      box-shadow: 0 0 18px rgba(255, 46, 126, 0.7);
+    }
+
+    .player-top-announce.chest {
+      border-color: #FFD700;
+      box-shadow: 0 0 18px rgba(255, 215, 0, 0.7);
+    }
+
+    .hud-center {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .bomb-timer-pill {
+      background: rgba(13, 10, 28, 0.85);
+      border: 1.5px solid #FF4757;
+      box-shadow: 0 0 12px rgba(255, 71, 87, 0.45);
+      padding: 2px 10px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-family: 'Bungee', cursive;
+      font-size: 0.88rem;
+      color: #fff;
+    }
+
+    .bomb-timer-pill.urgent {
+      background: rgba(255, 71, 87, 0.92);
+      animation: blink-urgent 0.4s infinite alternate;
+    }
+
+    .match-timer-pill {
+      background: rgba(13, 10, 28, 0.85);
+      border: 1.5px solid #00CEC9;
+      box-shadow: 0 0 10px rgba(0, 206, 201, 0.45);
+      padding: 2px 8px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-family: monospace;
+      font-weight: 800;
+      font-size: 0.82rem;
+      color: #00CEC9;
+      white-space: nowrap;
+    }
+
+    .match-timer-pill.urgent {
+      background: rgba(255, 71, 87, 0.92) !important;
+      border-color: #FF4757 !important;
+      color: #fff !important;
+      animation: blink-urgent 0.4s infinite alternate !important;
+    }
+
+    .status-badge {
+      padding: 3px 10px;
+      border-radius: 16px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .status-badge.safe {
+      background: rgba(46, 213, 115, 0.25);
+      color: #2ED573;
+      border: 1px solid #2ED573;
+    }
+
+    .status-badge.bomb {
+      background: rgba(255, 71, 87, 0.95);
+      color: #ffffff;
+      animation: pulse-bomb-badge 0.6s infinite alternate;
+      box-shadow: 0 0 15px #FF4757;
+    }
+
+    .status-badge.frozen {
+      background: rgba(0, 206, 201, 0.9);
+      color: #111;
+      font-weight: 900;
+      box-shadow: 0 0 15px #00CEC9;
+    }
+
+    /* FULLSCREEN ARENA WRAPPER */
+    .arena-wrapper {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+      overflow: hidden;
+      z-index: 5;
+      box-sizing: border-box;
+      pointer-events: none;
+    }
+
+    canvas#miniCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #090714;
+      pointer-events: auto;
+      border: none;
+      border-radius: 0;
+    }
+
+    /* LOBBY HINT BANNER */
+    .lobby-hint-banner {
+      position: absolute;
+      top: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(13, 10, 28, 0.85);
+      border: 1px solid rgba(108, 92, 231, 0.5);
+      border-radius: 14px;
+      padding: 3px 12px;
+      font-size: 0.7rem;
+      color: #A29BFE;
+      z-index: 22;
+      white-space: nowrap;
+      pointer-events: none;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      transition: opacity 0.4s ease;
+      display: none;
+    }
+
+    /* CONTROLS: JOYSTICK (LEFT) - ĐƯỢC DỜI CÁCH XA MÉP MÀN HÌNH ĐỂ KHÔNG BỊ CẤN TAY HOẶC DÍNH GESTURE */
+    .floating-joystick-zone {
+      position: absolute;
+      bottom: 25px;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+      left: 45px;
+      left: calc(env(safe-area-inset-left, 0px) + 42px);
+      width: 110px;
+      height: 110px;
+      z-index: 25;
+      touch-action: none;
+    }
+
+    .joystick-base {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(108, 92, 231, 0.25) 0%, rgba(13, 10, 28, 0.65) 100%);
+      border: 1.5px dashed rgba(162, 155, 254, 0.6);
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(3px);
+    }
+
+    .joystick-stick {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #6C5CE7 0%, #4834d4 100%);
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 14px rgba(108, 92, 231, 0.85);
+      position: absolute;
+      top: 31px;
+      left: 31px;
+      pointer-events: none;
+      transition: transform 0.04s linear;
+    }
+
+    /* CONTROLS: SKILL BUTTONS (RIGHT) */
+    .skills-cluster {
+      position: absolute;
+      bottom: 22px;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+      right: 32px;
+      right: calc(env(safe-area-inset-right, 0px) + 28px);
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      z-index: 25;
+      touch-action: none;
+    }
+
+    /* TELEPORT FARTHEST BUTTON */
+    .btn-teleport {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      background: rgba(35, 25, 55, 0.85);
+      border: 1.5px dashed rgba(255, 255, 255, 0.35);
+      box-shadow: none;
+      color: #fff;
+      font-family: 'Bungee', cursive;
+      font-size: 0.62rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(4px);
+      transition: all 0.25s ease;
+      opacity: 0.7;
+    }
+
+    .btn-teleport.charged {
+      background: linear-gradient(135deg, #00CEC9, #6C5CE7);
+      border: 2px solid #FFD700;
+      box-shadow: 0 0 20px rgba(0, 206, 201, 0.85), inset 0 0 10px rgba(255, 215, 0, 0.4);
+      opacity: 1;
+      animation: pulse-teleport-charge 1.2s infinite alternate;
+    }
+
+    @keyframes pulse-teleport-charge {
+      0% { transform: scale(1); filter: brightness(1); }
+      100% { transform: scale(1.05); filter: brightness(1.2); }
+    }
+
+    .btn-teleport:active {
+      transform: scale(0.92);
+      filter: brightness(1.2);
+    }
+
+    /* DASH BUTTON */
+    .btn-dash {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(255, 165, 2, 0.88), rgba(255, 71, 87, 0.88));
+      border: 2.5px solid #FFD700;
+      box-shadow: 0 0 18px rgba(255, 165, 2, 0.6);
+      color: #fff;
+      font-family: 'Bungee', cursive;
+      font-size: 0.78rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(4px);
+    }
+
+    .btn-dash:active {
+      transform: scale(0.92);
+      filter: brightness(1.2);
+    }
+
+    .skill-cooldown-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Bungee', cursive;
+      font-size: 1.15rem;
+      color: #FFD700;
+      display: none;
+    }
+
+    /* MODAL QUIZ (FULL SCREEN OVERLAY) */
+    .quiz-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(8, 6, 18, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+      padding: 16px;
+      backdrop-filter: blur(12px);
+      animation: pop-modal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    /* CHẾ ĐỘ MỞ RƯƠNG: Trong suốt, không cản trở di chuyển Joystick & Dash! */
+    .quiz-modal-overlay.chest-mode {
+      background: transparent;
+      backdrop-filter: none;
+      pointer-events: none;
+      align-items: flex-start;
+      padding-top: 10px;
+    }
+
+    .quiz-modal-overlay.hidden {
+      display: none;
+    }
+
+    @keyframes pop-modal {
+      0% { transform: scale(0.85); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .quiz-card {
+      background: linear-gradient(145deg, #1d143a, #110d26);
+      border: 2px solid var(--accent);
+      border-radius: 18px;
+      padding: 12px 18px;
+      max-width: 580px;
+      width: 100%;
+      max-height: 94vh;
+      max-height: 94dvh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 0 35px rgba(255, 165, 2, 0.4);
+    }
+
+    .quiz-card.frozen-mode {
+      border-color: var(--cyan);
+      box-shadow: 0 0 35px rgba(0, 206, 201, 0.5);
+    }
+
+    .quiz-card.chest-mode {
+      pointer-events: auto;
+      background: rgba(20, 14, 42, 0.94);
+      border: 2px solid #FFD700;
+      box-shadow: 0 0 28px rgba(255, 215, 0, 0.55);
+      backdrop-filter: blur(10px);
+      max-width: 520px;
+      padding: 10px 14px;
+      gap: 6px;
+    }
+
+    .btn-cancel-chest {
+      background: rgba(255, 71, 87, 0.25);
+      border: 1px solid #FF4757;
+      color: #ff6b81;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .btn-cancel-chest:active {
+      transform: scale(0.95);
+      background: #FF4757;
+      color: #fff;
+    }
+    .btn-cancel-chest.hidden {
+      display: none !important;
+    }
+
+    .quiz-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .quiz-title-tag {
+      font-family: 'Bungee', cursive;
+      font-size: 0.82rem;
+      color: #FFD700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .quiz-modal-timer {
+      background: rgba(255, 71, 87, 0.25);
+      border: 1.5px solid #FF4757;
+      box-shadow: 0 0 14px rgba(255, 71, 87, 0.6);
+      padding: 2px 10px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'Bungee', cursive;
+      font-size: 0.95rem;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .quiz-modal-timer.urgent {
+      background: rgba(255, 71, 87, 0.92);
+      animation: blink-urgent 0.4s infinite alternate;
+    }
+
+    .quiz-question-body {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.35;
+    }
+
+    .quiz-options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    @media (max-width: 480px) and (orientation: portrait) {
+      .quiz-options-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .btn-quiz-opt {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-quiz-opt:active {
+      transform: scale(0.97);
+      background: rgba(0, 206, 201, 0.3);
+      border-color: #00CEC9;
+    }
+
+    .btn-quiz-opt.selected {
+      border-color: #FFD700 !important;
+      background: rgba(255, 215, 0, 0.28) !important;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.6) !important;
+      transform: scale(1.02);
+    }
+
+    .btn-quiz-opt.correct {
+      border-color: #2ED573 !important;
+      background: rgba(46, 213, 115, 0.35) !important;
+      box-shadow: 0 0 25px rgba(46, 213, 115, 0.8) !important;
+      color: #fff !important;
+    }
+
+    .btn-quiz-opt.wrong {
+      border-color: #FF4757 !important;
+      background: rgba(255, 71, 87, 0.35) !important;
+      box-shadow: 0 0 25px rgba(255, 71, 87, 0.8) !important;
+      color: #fff !important;
+    }
+
+    /* ELIMINATED & VICTORY OVERLAYS */
+    .eliminated-overlay,
+    .victory-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(8, 6, 18, 0.96);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 80;
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      animation: pop-modal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .eliminated-overlay.hidden,
+    .victory-overlay.hidden {
+      display: none !important;
+    }
+
+    .eliminated-card {
+      background: linear-gradient(145deg, #2b121b, #150912);
+      border: 2px solid #FF4757;
+      border-radius: 18px;
+      padding: 16px 20px;
+      max-width: 440px;
+      width: 100%;
+      max-height: 94vh;
+      max-height: 94dvh;
+      overflow-y: auto;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 0 50px rgba(255, 71, 87, 0.5);
+    }
+
+    .victory-card {
+      background: linear-gradient(145deg, #2b2210, #141006);
+      border: 2.5px solid #FFD700;
+      border-radius: 18px;
+      padding: 16px 20px;
+      max-width: 440px;
+      width: 100%;
+      max-height: 94vh;
+      max-height: 94dvh;
+      overflow-y: auto;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+    }
+
+    /* FEEDBACK TOAST */
+    .feedback-toast {
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(13, 10, 28, 0.95);
+      border: 2px solid var(--accent);
+      border-radius: 14px;
+      padding: 10px 20px;
+      z-index: 70;
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-align: center;
+      box-shadow: 0 0 25px rgba(0,0,0,0.8);
+      display: none;
+      max-width: 90vw;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- VIGNETTES -->
+  <div class="vignette-bomb" id="vignetteBomb"></div>
+  <div class="vignette-frozen" id="vignetteFrozen"></div>
+
+  <!-- FEEDBACK TOAST -->
+  <div class="feedback-toast" id="feedbackToast"></div>
+
+  <!-- SCREEN 1: LOGIN -->
+  <div class="view-screen" id="screenLogin">
+    <div class="login-card">
+      <div class="login-col-left">
+        <div class="login-badge">BÀI 30: KIỂM THỬ & GỠ LỖI</div>
+        <h2 class="login-title">ĐẤU TRƯỜNG BOM</h2>
+        <div class="input-group">
+          <label>HỌ VÀ TÊN HỌC SINH</label>
+          <input type="text" id="inputPlayerName" class="input-control" placeholder="VD: Nguyễn Minh Anh" maxlength="18" autocomplete="off" autofocus>
+        </div>
+        <button class="btn-submit" id="btnJoinGame">VÀO PHÒNG CHƠI ➔</button>
+      </div>
+
+      <div class="login-col-right">
+        <div class="input-group">
+          <label>CHỌN LINH VẬT ĐẠI DIỆN</label>
+          <div class="avatar-grid" id="avatarGrid">
+            <button class="avatar-btn selected" data-avatar="🎓">🎓</button>
+            <button class="avatar-btn" data-avatar="🚀">🚀</button>
+            <button class="avatar-btn" data-avatar="💡">💡</button>
+            <button class="avatar-btn" data-avatar="⚡">⚡</button>
+            <button class="avatar-btn" data-avatar="🌸">🌸</button>
+            <button class="avatar-btn" data-avatar="👑">👑</button>
+            <button class="avatar-btn" data-avatar="🐱">🐱</button>
+            <button class="avatar-btn" data-avatar="🦊">🦊</button>
+            <button class="avatar-btn" data-avatar="🐼">🐼</button>
+            <button class="avatar-btn" data-avatar="🦁">🦁</button>
+            <button class="avatar-btn" data-avatar="🦄">🦄</button>
+            <button class="avatar-btn" data-avatar="💎">💎</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: GAMEPLAY CONTROLLER -->
+  <div class="game-screen hidden" id="screenGame">
+    <!-- HUD -->
+    <div class="hud-top-bar">
+      <div class="hud-left">
+        <span style="font-size: 1.05rem;" id="myAvatarDisplay">🎓</span>
+        <span style="font-weight: 700; font-size: 0.78rem;" id="myNameDisplay">Bạn</span>
+        <span class="hud-score" id="mobileScoreDisplay">⭐ 0đ</span>
+        <span class="hud-score" id="mobileBuffDisplay" style="color: #00CEC9; font-size: 0.72rem; display: none;"></span>
+      </div>
+
+      <div class="hud-center">
+        <div class="match-timer-pill" id="mobileMatchTimerPill">
+          <span>⏱️</span>
+          <span id="mobileMatchTimerVal">05:00</span>
+        </div>
+        <div class="bomb-timer-pill" id="mobileTimerPill">
+          <span>💣</span>
+          <span id="mobileTimerVal">15.0</span>s
+        </div>
+        <div class="status-badge safe" id="mobileStatusBadge">🟢 AN TOÀN</div>
+      </div>
+
+      <div class="hud-right">
+        <button id="btnMobileSoundToggle" class="hud-sound-btn" title="Bật/Tắt âm thanh">🔊</button>
+      </div>
+    </div>
+
+    <!-- TOP-CENTER ANNOUNCEMENT PILL FOR ARENA EVENTS -->
+    <div class="player-top-announce" id="playerTopAnnounce">
+      <span id="playerTopAnnounceIcon">📢</span>
+      <span id="playerTopAnnounceText">Thông báo trận đấu</span>
+    </div>
+
+    <!-- LOBBY HELPER BANNER (AUTO HIDDEN) -->
+    <div class="lobby-hint-banner" id="lobbyHintBanner">
+      🎮 Thử di chuyển Joystick & Dash khi chờ bắt đầu!
+    </div>
+
+    <!-- ARENA CANVAS -->
+    <div class="arena-wrapper">
+      <canvas id="miniCanvas" width="1600" height="1000"></canvas>
+    </div>
+
+    <!-- CONTROLS: JOYSTICK (LEFT) -->
+    <div class="floating-joystick-zone" id="joystickZone">
+      <div class="joystick-base"></div>
+      <div class="joystick-stick" id="joystickStick"></div>
+    </div>
+
+    <!-- CONTROLS: SKILL BUTTONS (RIGHT) -->
+    <div class="skills-cluster">
+      <!-- TELEPORT FARTHEST (SẠC TỪ RƯƠNG BÁU) -->
+      <button class="btn-teleport uncharged" id="btnTeleportFarthest">
+        <span style="font-size: 1.3rem;" id="teleportIcon">🔒</span>
+        <span id="teleportLabel" style="font-size: 0.65rem;">TỐC BIẾN</span>
+        <div class="skill-cooldown-overlay" id="teleportCooldownOverlay">CẦN SẠC</div>
+      </button>
+
+      <!-- DASH -->
+      <button class="btn-dash" id="btnDash">
+        <span style="font-size: 1.4rem;">⚡</span>
+        <span>DASH</span>
+        <div class="skill-cooldown-overlay" id="dashCooldownOverlay">3.0</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: QUIZ MODAL (CHO RƯƠNG BÁU) -->
+  <div class="quiz-modal-overlay hidden" id="quizModal">
+    <div class="quiz-card" id="quizCardBox">
+      <div class="quiz-header-row">
+        <div class="quiz-title-tag" id="quizModalTitle">
+          <span>🎁</span> <span>RƯƠNG BÁU TIN HỌC 10</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <!-- ĐỒNG HỒ ĐẾM NGƯỢC BOM HOẶC RƯƠNG -->
+          <div class="quiz-modal-timer" id="quizModalTimerPill">
+            <span>💣</span> <b id="quizModalTimerVal">15.0</b>s
+          </div>
+          <!-- NÚT HỦY / BỎ QUA MỞ RƯƠNG -->
+          <button class="btn-cancel-chest hidden" id="btnCancelChest">✖ Bỏ qua</button>
+        </div>
+      </div>
+      <div class="quiz-question-body" id="quizModalQuestion">
+        Nội dung câu hỏi đang tải...
+      </div>
+      <div class="quiz-options-grid" id="quizModalOptions">
+        <!-- 4 buttons -->
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 4: RESPAWN OVERLAY (KHI BOM NỔ TRỪ -30 ĐIỂM & ĐẾM NGƯỢC HỒI SINH 3S) -->
+  <div class="eliminated-overlay hidden" id="eliminatedOverlay">
+    <div class="eliminated-card">
+      <div style="font-size: 3.5rem;">💥 ⚡ ⏱️</div>
+      <h2 style="font-family: 'Bungee'; color: #FF4757; font-size: 1.6rem;" id="respawnTitle">BOM ĐÃ PHÁT NỔ!</h2>
+      <p style="color: #ffb8d9; font-size: 1.15rem; font-weight: 800;" id="eliminatedRankText">
+        Bạn bị trừ <b>-30 điểm</b> phạt!
+      </p>
+      <div style="background: rgba(255, 71, 87, 0.15); border: 1.5px solid #FF4757; padding: 14px; border-radius: 14px; font-size: 0.95rem; color: #fff; line-height: 1.45;">
+        ⏳ Đang hồi sinh sau: <b id="respawnCountdownNum" style="color: #FFD700; font-size: 1.6rem; font-family: monospace;">3</b> giây<br>
+        <span style="font-size: 0.82rem; color: #E0E0E0;">Hãy nhanh chân tìm Rương báu để sạc Tốc biến & gỡ lại điểm số!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 5: VICTORY OVERLAY -->
+  <div class="victory-overlay hidden" id="victoryOverlay">
+    <div class="victory-card">
+      <div style="font-size: 4rem;">👑 🎉 🏆</div>
+      <h2 style="font-family: 'Bungee'; color: #FFD700; font-size: 1.8rem;" id="mobileVictoryTitle">QUÁN QUÂN SINH TỒN!</h2>
+      <p style="color: #fff; font-size: 1.15rem; font-weight: 800;" id="mobileVictoryMsg">
+        Chúc mừng bạn đạt điểm số cao nhất lớp sau 5 phút thi đấu!
+      </p>
+      <div style="font-size: 1.35rem; color: #FFD700; font-weight: 800; margin-top: 8px;" id="mobileVictoryScore">
+        ⭐ TỔNG ĐIỂM: 0 ĐIỂM ⭐
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+
+    let myPlayer = {
+      id: null,
+      name: '',
+      avatar: '🎓',
+      color: '#6C5CE7',
+      score: 0
+    };
+
+    let arenaConfig = {
+      width: 1600,
+      height: 1000,
+      obstacles: []
+    };
+
+    let gameState = {
+      status: 'LOBBY',
+      roundNumber: 0,
+      bombTimer: 30.0,
+      bombHolderId: null,
+      players: []
+    };
+
+    const miniCanvas = document.getElementById('miniCanvas');
+    const miniCtx = miniCanvas.getContext('2d');
+
+    // Avatar selector
+    let selectedAvatar = '🎓';
+    document.querySelectorAll('.avatar-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedAvatar = btn.getAttribute('data-avatar');
+      });
+    });
+
+    // Mobile Sound Toggle Listener
+    const btnMobileSound = document.getElementById('btnMobileSoundToggle');
+    if (btnMobileSound) {
+      btnMobileSound.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const enabled = window.GameAudio ? window.GameAudio.toggleMaster() : true;
+        btnMobileSound.textContent = enabled ? '🔊' : '🔇';
+        btnMobileSound.classList.toggle('muted', !enabled);
+        if (enabled && window.GameAudio) {
+          window.GameAudio.sfx.tick();
+          window.GameAudio.playBGM(gameState.status === 'PLAYING' ? 'battle' : 'lobby');
+        }
+      });
+    }
+
+    // Join Game
+    document.getElementById('btnJoinGame').addEventListener('click', () => {
+      // Cố gắng mở chế độ toàn màn hình để ẩn thanh địa chỉ và tăng tối đa không gian chơi
+      try {
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else if (document.documentElement.webkitRequestFullscreen) {
+          document.documentElement.webkitRequestFullscreen().catch(() => {});
+        }
+      } catch (err) {}
+
+      const nameInput = document.getElementById('inputPlayerName').value.trim();
+      const playerName = nameInput || `Học sinh ${Math.floor(Math.random() * 90 + 10)}`;
+
+      const colors = ['#FF2E7E', '#6C5CE7', '#2ED573', '#FFA502', '#00CEC9', '#A29BFE'];
+      const myColor = colors[Math.floor(Math.random() * colors.length)];
+
+      myPlayer.name = playerName;
+      myPlayer.avatar = selectedAvatar;
+      myPlayer.color = myColor;
+
+      socket.emit('player_join', {
+        name: playerName,
+        avatar: selectedAvatar,
+        color: myColor
+      });
+    });
+
+    socket.on('join_success', (data) => {
+      myPlayer.id = data.id;
+      if (window.GameAudio) {
+        window.GameAudio.init();
+        if (window.GameAudio.isMasterEnabled()) {
+          window.GameAudio.playBGM(gameState.status === 'PLAYING' ? 'battle' : 'lobby');
+        }
+      }
+      document.getElementById('screenLogin').classList.add('hidden');
+      document.getElementById('screenGame').classList.remove('hidden');
+
+      document.getElementById('myAvatarDisplay').textContent = myPlayer.avatar;
+      document.getElementById('myNameDisplay').textContent = myPlayer.name;
+
+      // Banner sảnh chờ tự động ẩn sau 3.5 giây để không che màn hình
+      const hint = document.getElementById('lobbyHintBanner');
+      if (hint) {
+        hint.style.display = 'block';
+        hint.style.opacity = '1';
+        setTimeout(() => {
+          hint.style.opacity = '0';
+          setTimeout(() => { hint.style.display = 'none'; }, 400);
+        }, 3500);
+      }
+    });
+
+    socket.on('init_arena', (data) => {
+      arenaConfig = {
+        width: data.width || 1600,
+        height: data.height || 1000,
+        obstacles: data.obstacles || []
+      };
+      miniCanvas.width = arenaConfig.width;
+      miniCanvas.height = arenaConfig.height;
+    });
+
+    socket.on('game_tick', (state) => {
+      gameState = state;
+      updateMobileUI();
+    });
+
+    // ==========================================
+    // QUIZ EVENTS: CHUYỀN BOM & MỞ KHÓA
+    // ==========================================
+    const quizModal = document.getElementById('quizModal');
+    const quizCardBox = document.getElementById('quizCardBox');
+    const quizTitle = document.getElementById('quizModalTitle');
+    const quizQuestion = document.getElementById('quizModalQuestion');
+    const quizOptions = document.getElementById('quizModalOptions');
+
+    let currentQuizMode = null; // 'PASS' | 'UNLOCK'
+    let quizSubmitTimer = null;
+
+    // 1. Thử thách chuyền bom
+    function showPassQuizUI(data) {
+      currentQuizMode = 'PASS';
+      if (navigator.vibrate) navigator.vibrate([150, 50, 150]);
+      quizModal.className = 'quiz-modal-overlay';
+      const btnCancel = document.getElementById('btnCancelChest');
+      if (btnCancel) btnCancel.classList.add('hidden');
+      quizCardBox.className = 'quiz-card';
+      quizTitle.innerHTML = `<span>🔥</span> <span>CHUYỀN CHO ${data.targetName || 'BẠN HỌC'}: TRẢ LỜI ĐÚNG ĐỂ CHUYỀN!</span>`;
+      quizQuestion.textContent = data.question;
+
+      buildMobileQuizOptions(data.options, 'PASS');
+    }
+
+    socket.on('show_pass_quiz', (data) => {
+      showPassQuizUI(data);
+    });
+
+    socket.on('pass_quiz_started', (data) => {
+      // Fallback: nếu học sinh là người chuyền bom thì hiển thị ngay
+      if (data && data.passerId === myPlayer.id) {
+        showPassQuizUI(data);
+      }
+    });
+
+    // 2. Thử thách mở khóa khi dính bom
+    socket.on('show_unlock_quiz', (data) => {
+      currentQuizMode = 'UNLOCK';
+      if (navigator.vibrate) navigator.vibrate([250, 100, 250]);
+      showUnlockQuizUI(data);
+    });
+
+    socket.on('player_frozen_quiz', (data) => {
+      // Fallback: nếu học sinh là người nhận bom bị đóng băng thì hiển thị ngay
+      if (data && data.playerId === myPlayer.id) {
+        currentQuizMode = 'UNLOCK';
+        if (navigator.vibrate) navigator.vibrate([250, 100, 250]);
+        showUnlockQuizUI(data);
+      }
+    });
+
+    socket.on('unlock_quiz_retry', (data) => {
+      currentQuizMode = 'UNLOCK';
+      if (navigator.vibrate) navigator.vibrate(300);
+      showToast(`❌ SAI RỒI! ${data.previousExplain}`, 3500);
+      showUnlockQuizUI(data);
+    });
+
+    function showUnlockQuizUI(data) {
+      quizModal.className = 'quiz-modal-overlay';
+      const btnCancel = document.getElementById('btnCancelChest');
+      if (btnCancel) btnCancel.classList.add('hidden');
+      quizCardBox.className = 'quiz-card frozen-mode';
+      quizTitle.innerHTML = `<span>❄️🔒</span> <span>BẠN BỊ ĐÓNG BĂNG! PHẢI TRẢ LỜI ĐÚNG ĐỂ MỞ KHÓA!</span>`;
+      quizQuestion.textContent = data.question;
+
+      buildMobileQuizOptions(data.options, 'UNLOCK');
+    }
+
+    function buildMobileQuizOptions(options, mode) {
+      quizOptions.innerHTML = '';
+      if (quizSubmitTimer) clearTimeout(quizSubmitTimer);
+
+      options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-quiz-opt';
+        btn.id = `playerOpt_${idx}`;
+        btn.textContent = opt;
+
+        btn.onclick = () => {
+          // Khóa các nút để tránh bấm nhiều lần
+          document.querySelectorAll('.btn-quiz-opt').forEach(b => {
+            b.style.pointerEvents = 'none';
+          });
+          btn.classList.add('selected');
+
+          // 1. Đồng bộ tức thì lên màn hình TV giáo viên
+          socket.emit('quiz_select_option', { chosenIndex: idx });
+
+          // 2. Gửi đáp án lên server NGAY LẬP TỨC không chờ đợi delay!
+          if (mode === 'PASS') {
+            socket.emit('submit_pass_quiz', { chosenIndex: idx });
+          } else if (mode === 'UNLOCK') {
+            socket.emit('submit_unlock_quiz', { chosenIndex: idx });
+          } else if (mode === 'CHEST') {
+            socket.emit('submit_chest_quiz', { chosenIndex: idx });
+          }
+        };
+        quizOptions.appendChild(btn);
+      });
+    }
+
+    // 3. Thử thách mở Rương báu
+    let chestCountdownTimer = null;
+    let chestTimeRemaining = 10.0;
+    let activeChestId = null;
+
+    socket.on('show_chest_quiz', (data) => {
+      currentQuizMode = 'CHEST';
+      activeChestId = data.chestId;
+      if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+      showChestQuizUI(data);
+    });
+
+    function showChestQuizUI(data) {
+      window.GameAudio?.sfx.chestOpen();
+      if (chestCountdownTimer) clearInterval(chestCountdownTimer);
+      chestTimeRemaining = data.timeLimit || 7.0;
+
+      quizModal.className = 'quiz-modal-overlay chest-mode';
+      const btnCancel = document.getElementById('btnCancelChest');
+      if (btnCancel) btnCancel.classList.remove('hidden');
+
+      quizCardBox.className = 'quiz-card chest-mode';
+      if (data.hasBomb) {
+        quizTitle.innerHTML = `<span>💣 ❄️</span> <span>GỠ NGÒI KHẨN CẤP: ĐÚNG +5s BOM & HỒI CHIÊU, SAI -3s!</span>`;
+      } else if (data.isTreasureRain) {
+        quizTitle.innerHTML = `<span>🌧️ ⭐</span> <span>BÃO RƯƠNG: TRẢ LỜI ĐÚNG NHẬN +30 ĐIỂM!</span>`;
+      } else {
+        quizTitle.innerHTML = `<span>🎁 ⭐</span> <span>RƯƠNG BÁU: TRẢ LỜI ĐÚNG ĐỂ NHẬN ĐẶC QUYỀN!</span>`;
+      }
+      quizQuestion.textContent = data.question;
+
+      const modalTimerVal = document.getElementById('quizModalTimerVal');
+      const modalTimerPill = document.getElementById('quizModalTimerPill');
+      if (modalTimerPill) modalTimerPill.innerHTML = `<span>⏱</span> <b id="quizModalTimerVal">${chestTimeRemaining.toFixed(1)}</b>s`;
+
+      chestCountdownTimer = setInterval(() => {
+        chestTimeRemaining -= 0.1;
+        const v = document.getElementById('quizModalTimerVal');
+        if (v && currentQuizMode === 'CHEST') {
+          v.textContent = Math.max(0, chestTimeRemaining).toFixed(1);
+        }
+        if (chestTimeRemaining <= 0) {
+          clearInterval(chestCountdownTimer);
+          chestCountdownTimer = null;
+          if (currentQuizMode === 'CHEST') {
+            quizModal.classList.add('hidden');
+            quizModal.className = 'quiz-modal-overlay hidden';
+            currentQuizMode = null;
+            showToast('⏰ Hết 7s mở rương! Rương đã tự đóng và biến mất.', 2500);
+          }
+        }
+      }, 100);
+
+      buildMobileQuizOptions(data.options, 'CHEST');
+    }
+
+    // Nút Bỏ qua / Hủy mở rương
+    document.getElementById('btnCancelChest')?.addEventListener('click', () => {
+      if (currentQuizMode === 'CHEST') {
+        if (chestCountdownTimer) {
+          clearInterval(chestCountdownTimer);
+          chestCountdownTimer = null;
+        }
+        quizModal.classList.add('hidden');
+        quizModal.className = 'quiz-modal-overlay hidden';
+        currentQuizMode = null;
+        activeChestId = null;
+        socket.emit('cancel_chest_quiz');
+        showToast('🛡️ Đã đóng rương báu!', 2000);
+      }
+    });
+
+    socket.on('chest_quiz_cancelled', (data) => {
+      if (chestCountdownTimer) {
+        clearInterval(chestCountdownTimer);
+        chestCountdownTimer = null;
+      }
+      quizModal.classList.add('hidden');
+      currentQuizMode = null;
+      activeChestId = null;
+      if (data && data.message) {
+        showToast(data.message, 3000);
+      }
+    });
+
+    socket.on('chest_cooldown_active', (data) => {
+      showToast(`⏳ Chờ ${data.timeLeft}s để mở tiếp rương khác!`, 1600);
+    });
+
+    socket.on('treasure_rain_started', (data) => {
+      window.GameAudio?.sfx.powerup();
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 300]);
+      showToast('🌧️ BÃO RƯƠNG DEBUG XUẤT HIỆN! x2 Rương • +30đ/câu!', 4000);
+    });
+
+    socket.on('treasure_rain_ended', () => {
+      showToast('🌤️ Cơn mưa rương đã kết thúc!', 2200);
+    });
+
+    socket.on('chest_despawned', (data) => {
+      if (currentQuizMode === 'CHEST' && activeChestId === data.id) {
+        if (chestCountdownTimer) {
+          clearInterval(chestCountdownTimer);
+          chestCountdownTimer = null;
+        }
+        quizModal.classList.add('hidden');
+        currentQuizMode = null;
+        activeChestId = null;
+        showToast('⚠️ Rương đã bị người khác mở trước!', 2800);
+      }
+    });
+
+    socket.on('chest_quiz_result', (data) => {
+      if (chestCountdownTimer) {
+        clearInterval(chestCountdownTimer);
+        chestCountdownTimer = null;
+      }
+      currentQuizMode = null;
+      activeChestId = null;
+
+      if (data.isCorrect) {
+        window.GameAudio?.sfx.correct();
+        if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
+        if (data.hasBomb) {
+          showToast(`❄️ GỠ NGÒI THÀNH CÔNG! Bom +5s & Hồi chiêu kỹ năng! ⭐ ${data.score || 0}đ`, 3800);
+        } else {
+          showToast(`🎉 ĐÚNG RỒI! Nhận [${data.rewardName}]! ⭐ ${data.score || 0}đ`, 3500);
+        }
+        setTimeout(() => {
+          quizModal.classList.add('hidden');
+        }, 400);
+      } else {
+        window.GameAudio?.sfx.wrong();
+        if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+        if (data.hasBomb) {
+          showToast(`⚠️ SAI RỒI! Trừ -5đ, bom -3s & chậm 30% trong 3s! (${data.explain})`, 3800);
+        } else {
+          showToast(`❌ SAI RỒI! Trừ -5đ & Lỗi biên dịch -30% tốc độ trong 3s! (${data.explain})`, 3500);
+        }
+        setTimeout(() => {
+          quizModal.classList.add('hidden');
+        }, 450);
+      }
+    });
+
+    // Thông báo nhanh trên đỉnh màn hình cho mobile
+    let playerAnnounceTimer = null;
+    function showPlayerTopAnnounce({ title, type, icon }) {
+      const elimOverlay = document.getElementById('eliminatedOverlay');
+      if (elimOverlay && !elimOverlay.classList.contains('hidden')) {
+        return; // Đang ở màn hình đếm ngược hồi sinh, không hiển thị đè thông báo
+      }
+      if (type === 'eliminated' && (window._myLastExplodedTime && Date.now() - window._myLastExplodedTime < 4500)) {
+        return; // Bản thân vừa bị nổ, đã có màn hình fullscreen đếm ngược 3s, không hiện thêm thông báo đè
+      }
+      if (type === 'eliminated' && myPlayer.name && title && title.includes(myPlayer.name)) {
+        return; // Đích danh mình bị nổ, không hiển thị banner đỉnh
+      }
+
+      // Ẩn toast feedback nếu đang mở để tránh 2 thông báo đè nhau ở cùng đỉnh màn hình
+      const toast = document.getElementById('feedbackToast');
+      if (toast) toast.style.display = 'none';
+
+      const pill = document.getElementById('playerTopAnnounce');
+      const iconEl = document.getElementById('playerTopAnnounceIcon');
+      const textEl = document.getElementById('playerTopAnnounceText');
+      if (!pill) return;
+
+      if (playerAnnounceTimer) clearTimeout(playerAnnounceTimer);
+
+      pill.className = `player-top-announce ${type || 'info'} visible`;
+      if (iconEl) iconEl.textContent = icon || '📢';
+      if (textEl) textEl.textContent = title;
+
+      playerAnnounceTimer = setTimeout(() => {
+        pill.classList.remove('visible');
+      }, 2600);
+    }
+
+    socket.on('top_announcement', (data) => {
+      showPlayerTopAnnounce(data);
+    });
+
+    // Nhận kết quả và hiển thị đồng bộ màu xanh / đỏ
+    socket.on('quiz_result_revealed', (data) => {
+      if (quizSubmitTimer) clearTimeout(quizSubmitTimer);
+
+      // QUAN TRỌNG: Tuyệt đối KHÔNG ẩn modal của người đang mở rương báu CHEST!
+      if (currentQuizMode === 'CHEST') return;
+
+      // Chỉ xử lý nếu chính bản thân học sinh này vừa tham gia câu hỏi PASS hoặc UNLOCK!
+      const isMyQuiz = (data.playerName === myPlayer.name) ||
+                       (data.playerId && data.playerId === myPlayer.id);
+
+      if (!isMyQuiz) {
+        return; // Học sinh khác không bị che màn hình!
+      }
+
+      const chosenBtn = document.getElementById(`playerOpt_${data.chosenIndex}`);
+      const correctBtn = document.getElementById(`playerOpt_${data.correctIndex}`);
+
+      if (chosenBtn) chosenBtn.classList.remove('selected');
+
+      if (data.isCorrect) {
+        if (chosenBtn) chosenBtn.classList.add('correct');
+        if (navigator.vibrate) navigator.vibrate([100, 50, 200]);
+        // Tắt modal cực nhanh sau 400ms để học sinh chạy tiếp ngay, không lãng phí thời gian bom 15s!
+        setTimeout(() => {
+          quizModal.classList.add('hidden');
+        }, 400);
+      } else {
+        if (chosenBtn) chosenBtn.classList.add('wrong');
+        if (correctBtn) correctBtn.classList.add('correct');
+        if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+
+        // Nếu là câu hỏi CHUYỀN BOM mà trả lời sai thì đóng modal sau 450ms để chạy tiếp
+        if (data.type === 'PASS') {
+          setTimeout(() => {
+            quizModal.classList.add('hidden');
+          }, 450);
+        }
+        // Nếu là câu hỏi MỞ KHÓA (UNLOCK) thì giữ modal để nhận câu hỏi mới ngay sau đó
+      }
+    });
+
+    socket.on('unlock_quiz_success', (data) => {
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+    });
+
+    socket.on('bomb_pass_success', (data) => {
+      if (data.fromId === myPlayer.id) {
+        showToast(`✅ Chuyền bom thành công cho ${data.toName}! (+10 điểm)`, 2500);
+      }
+    });
+
+    socket.on('bomb_pass_failed', (data) => {
+      if (data.passerId === myPlayer.id) {
+        showToast(`❌ Trả lời sai! Đối thủ đã tốc biến thoát hiểm!`, 2500);
+      }
+    });
+
+    let myTeleportTrail = null; // Lưu đường laser dịch chuyển từ chỗ cũ đến chỗ mới
+
+    socket.on('player_teleported', (data) => {
+      if (data.id === myPlayer.id) {
+        window.GameAudio?.sfx.teleport();
+        if (navigator.vibrate) navigator.vibrate(120);
+        myFocalRingTimer = 3.0;
+        myTeleportTrail = {
+          fromX: data.fromX,
+          fromY: data.fromY,
+          toX: data.toX,
+          toY: data.toY,
+          startTime: Date.now(),
+          duration: 3500
+        };
+        showToast(`🌀 TỐC BIẾN! 📍 BẠN ĐÃ ĐÁP XUỐNG ĐÂY!`, 2200);
+      }
+    });
+
+    let respawnCountdownInterval = null;
+    let isRespawnModalShowing = false;
+
+    socket.on('player_respawning', (data) => {
+      window._myLastExplodedTime = Date.now();
+      window._respawnFinished = false; // Bắt đầu chu kỳ hồi sinh mới
+      window._respawnCycleId = Date.now();
+      const currentCycle = window._respawnCycleId;
+
+      if (navigator.vibrate) navigator.vibrate([300, 100, 500, 100, 400]);
+      const elimOverlay = document.getElementById('eliminatedOverlay');
+      const rankText = document.getElementById('eliminatedRankText');
+      const countNum = document.getElementById('respawnCountdownNum');
+
+      if (elimOverlay) {
+        elimOverlay.classList.remove('hidden');
+        isRespawnModalShowing = true;
+        if (rankText) rankText.innerHTML = `Bạn bị phạt <b>-${data.scorePenalty || 30} điểm</b>! Điểm còn: <b>${data.currentScore || 0}đ</b>`;
+      }
+      let remainSec = Math.ceil(data.respawnTimer || 3.0);
+      if (countNum) countNum.textContent = remainSec;
+
+      if (respawnCountdownInterval) {
+        clearInterval(respawnCountdownInterval);
+        respawnCountdownInterval = null;
+      }
+
+      respawnCountdownInterval = setInterval(() => {
+        if (window._respawnCycleId !== currentCycle) {
+          clearInterval(respawnCountdownInterval);
+          respawnCountdownInterval = null;
+          return;
+        }
+
+        remainSec--;
+        if (remainSec <= 0) {
+          clearInterval(respawnCountdownInterval);
+          respawnCountdownInterval = null;
+          isRespawnModalShowing = false;
+          window._respawnFinished = true; // Khóa chặt: Chu kỳ đếm ngược này ĐÃ XONG, cấm mở lại lần 2!
+
+          if (elimOverlay) elimOverlay.classList.add('hidden');
+          myFocalRingTimer = 2.5;
+          window.GameAudio?.sfx.respawn();
+          showToast(`⚡ HỒI SINH HOÀN TẤT! 📍 BẠN Ở ĐÂY!`, 2200);
+        } else if (countNum) {
+          countNum.textContent = remainSec;
+        }
+      }, 1000);
+      // Đã có màn hình overlay đếm ngược 3s hiển thị trừ điểm cực rõ, không bắn toast đè trùng lặp
+    });
+
+    // Thông báo bom mới xuất hiện khi bắt đầu chu kỳ 15s tiếp theo
+    socket.on('new_bomb_round', (data) => {
+      if (data.id === myPlayer.id) {
+        window.GameAudio?.sfx.receiveBomb();
+        if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+        showToast(`🔥 BẠN ĐANG GIỮ BOM MỚI (15s)! HÃY RƯỢT ĐUỔI BẠN KHÁC!`, 3500);
+      }
+      // Không gọi showToast cho học sinh khác để tránh 2 thông báo liên tiếp với top_announcement từ server
+    });
+
+    socket.on('bomb_passed', (data) => {
+      if (data.toId === myPlayer.id) {
+        window.GameAudio?.sfx.receiveBomb();
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        showToast(`💣 BẠN VỪA NHẬN BOM TỪ ${data.fromName}! Chạy mau!`, 3000);
+      } else if (data.fromId === myPlayer.id) {
+        window.GameAudio?.sfx.pass();
+        showToast(`⚡ Chuyền bom thành công cho ${data.toName}! (+5đ)`, 2500);
+      }
+    });
+
+    socket.on('teleport_charge_required', (data) => {
+      showToast(data.message || '⚠️ Cần giải đúng Rương báu để sạc Tốc biến!', 3000);
+    });
+
+    socket.on('player_exploded', (data) => {
+      if (data.id === myPlayer.id) {
+        window.GameAudio?.sfx.explosion();
+        window._myLastExplodedTime = Date.now();
+        if (navigator.vibrate) navigator.vibrate([400, 100, 600]);
+      }
+    });
+
+    socket.on('player_eliminated', (data) => {
+      if (navigator.vibrate) navigator.vibrate([400, 100, 600]);
+    });
+
+    socket.on('game_victory', (data) => {
+      const winner = data.winner;
+      const isMe = (winner && winner.id === myPlayer.id);
+
+      if (isMe) {
+        if (navigator.vibrate) navigator.vibrate([200, 100, 300, 100, 500]);
+        const vicOverlay = document.getElementById('victoryOverlay');
+        if (vicOverlay) vicOverlay.classList.remove('hidden');
+        const scoreEl = document.getElementById('mobileVictoryScore');
+        if (scoreEl) scoreEl.textContent = `⭐ TỔNG ĐIỂM: ${winner.score || 0} ĐIỂM ⭐`;
+        const vicTitle = document.getElementById('mobileVictoryTitle');
+        if (vicTitle) vicTitle.textContent = '👑 BẠN LÀ QUÁN QUÂN!';
+        const vicMsg = document.getElementById('mobileVictoryMsg');
+        if (vicMsg) vicMsg.textContent = 'Chúc mừng bạn đạt điểm số cao nhất lớp sau 5 phút thi đấu!';
+      } else {
+        showToast(`🏆 HẾT GIỜ 5 PHÚT! 👑 ${winner ? winner.name : 'Có bạn'} dẫn đầu với ${winner ? winner.score : 0}đ và đoạt Quán Quân!`, 6000);
+      }
+    });
+
+    socket.on('game_reset', () => {
+      const elimOverlay = document.getElementById('eliminatedOverlay');
+      const vicOverlay = document.getElementById('victoryOverlay');
+      if (elimOverlay) elimOverlay.classList.add('hidden');
+      if (vicOverlay) vicOverlay.classList.add('hidden');
+      const skillsCluster = document.querySelector('.skills-cluster');
+      if (skillsCluster) skillsCluster.style.display = 'flex';
+      const joystickZone = document.getElementById('joystickZone');
+      if (joystickZone) joystickZone.style.pointerEvents = 'auto';
+    });
+
+    let mobileToastTimer = null;
+    function showToast(msg, duration = 2500) {
+      const toast = document.getElementById('feedbackToast');
+      if (!toast) return;
+
+      // Ẩn playerTopAnnounce để tránh hiển thị đè 2 thông báo ở cùng vị trí đỉnh màn hình
+      const topAnn = document.getElementById('playerTopAnnounce');
+      if (topAnn) topAnn.classList.remove('visible');
+
+      toast.textContent = msg;
+      toast.style.display = 'block';
+
+      if (mobileToastTimer) clearTimeout(mobileToastTimer);
+      mobileToastTimer = setTimeout(() => { toast.style.display = 'none'; }, duration);
+    }
+
+    // ==========================================
+    // UI UPDATES
+    // ==========================================
+    function updateMobileUI() {
+      const myInGame = (gameState.players || []).find(p => p.id === myPlayer.id);
+
+      // Cập nhật đếm ngược 7 phút tổng trận đấu
+      const mSec = (gameState.matchTimer !== undefined) ? gameState.matchTimer : 420;
+      const mMin = Math.floor(mSec / 60);
+      const mRem = Math.floor(mSec % 60);
+      const mFormatted = `${mMin.toString().padStart(2, '0')}:${mRem.toString().padStart(2, '0')}`;
+      const mobMatchTimer = document.getElementById('mobileMatchTimerVal');
+      const mobMatchPill = document.getElementById('mobileMatchTimerPill');
+      if (mobMatchTimer) mobMatchTimer.textContent = mFormatted;
+      if (mobMatchPill) {
+        if (mSec <= 60 && gameState.status === 'PLAYING') {
+          mobMatchPill.classList.add('urgent');
+        } else {
+          mobMatchPill.classList.remove('urgent');
+        }
+      }
+
+      // Đồng bộ nhạc nền BGM theo trạng thái trận đấu
+      if (window.GameAudio && window.GameAudio.isMasterEnabled()) {
+        if (gameState.status === 'LOBBY') {
+          window.GameAudio.setBGMMode('lobby');
+        } else if (gameState.status === 'PLAYING') {
+          const isPanic = (myInGame && myInGame.hasBomb) || (gameState.bombTimer && gameState.bombTimer <= 5.0) || (mSec <= 60);
+          window.GameAudio.setBGMMode(isPanic ? 'panic' : 'battle');
+        } else if (gameState.status === 'GAME_OVER') {
+          window.GameAudio.setBGMMode('victory');
+        } else if (gameState.status === 'INTERMISSION') {
+          window.GameAudio.stopBGM();
+        }
+      }
+
+      // Cập nhật điểm số và buff của bản thân
+      const scoreDisp = document.getElementById('mobileScoreDisplay');
+      if (scoreDisp) scoreDisp.textContent = `⭐ ${myInGame ? (myInGame.score || 0) : 0}đ`;
+
+      const buffDisp = document.getElementById('mobileBuffDisplay');
+      if (buffDisp && myInGame) {
+        if (myInGame.slowTimer > 0) {
+          buffDisp.style.display = 'inline';
+          buffDisp.style.color = '#FFA502';
+          buffDisp.textContent = `🐌 Chậm 30% (${myInGame.slowTimer}s)`;
+        } else if (myInGame.scoreMultiplierTimer > 0) {
+          buffDisp.style.display = 'inline';
+          buffDisp.style.color = '#FFD700';
+          buffDisp.textContent = `⚡ x2 Điểm (${myInGame.scoreMultiplierTimer}s)`;
+        } else if (myInGame.speedMultiplierTimer > 0) {
+          buffDisp.style.display = 'inline';
+          buffDisp.style.color = '#2ED573';
+          buffDisp.textContent = `👟 Tốc độ +35% (${myInGame.speedMultiplierTimer}s)`;
+        } else {
+          buffDisp.style.display = 'none';
+        }
+      }
+
+      const elimOverlay = document.getElementById('eliminatedOverlay');
+      const vicOverlay = document.getElementById('victoryOverlay');
+      const skillsCluster = document.querySelector('.skills-cluster');
+      const joystickZone = document.getElementById('joystickZone');
+
+      // Nếu đã có người thắng cuộc chung cuộc
+      if (gameState.status === 'GAME_OVER' && gameState.winner) {
+        if (gameState.winner.id === myPlayer.id) {
+          if (vicOverlay) vicOverlay.classList.remove('hidden');
+          if (elimOverlay) elimOverlay.classList.add('hidden');
+          const scoreEl = document.getElementById('mobileVictoryScore');
+          if (scoreEl) scoreEl.textContent = `⭐ TỔNG ĐIỂM: ${gameState.winner.score || 0} ĐIỂM ⭐`;
+        } else {
+          if (vicOverlay) vicOverlay.classList.add('hidden');
+        }
+      }
+
+      if (myInGame) {
+        // Kiểm tra xem bản thân có đang bị choáng/hồi sinh sau nổ bom không
+        const isDeadOrRespawning = myInGame.isRespawning || (myInGame.isStunned && myInGame.respawnTimer > 0);
+
+        if (isDeadOrRespawning) {
+          // CHỈ mở elimOverlay nếu chu kỳ đếm ngược chưa kết thúc (ngăn chặn tái hiện 1 giây do lệch nhịp tick)
+          if (elimOverlay && gameState.status !== 'GAME_OVER' && !window._respawnFinished) {
+            elimOverlay.classList.remove('hidden');
+          }
+          if (skillsCluster) skillsCluster.style.display = 'none';
+          if (joystickZone) joystickZone.style.pointerEvents = 'none';
+
+          const badge = document.getElementById('mobileStatusBadge');
+          badge.className = 'status-badge dead';
+          badge.textContent = `⚡ ĐANG HỒI SINH (${Math.ceil(myInGame.respawnTimer || 3)}s)`;
+          return;
+        } else {
+          // Khi server đã hết choáng/hồi sinh
+          window._respawnFinished = false; // Reset cờ cho lần nổ tiếp theo
+          if (elimOverlay && !isRespawnModalShowing) {
+            elimOverlay.classList.add('hidden');
+          }
+          if (skillsCluster) skillsCluster.style.display = 'flex';
+          if (joystickZone) joystickZone.style.pointerEvents = 'auto';
+        }
+
+        const badge = document.getElementById('mobileStatusBadge');
+        const vigBomb = document.getElementById('vignetteBomb');
+        const vigFrozen = document.getElementById('vignetteFrozen');
+        const btnTeleport = document.getElementById('btnTeleportFarthest');
+        const tpOverlay = document.getElementById('teleportCooldownOverlay');
+        const tpIcon = document.getElementById('teleportIcon');
+        const tpLabel = document.getElementById('teleportLabel');
+
+        if (myInGame.isStunned) {
+          badge.className = 'status-badge frozen';
+          badge.textContent = '⚡ BỊ CHOÁNG!';
+          vigBomb.style.display = 'none';
+          vigFrozen.style.display = 'block';
+        } else if (myInGame.isInvisible) {
+          badge.className = 'status-badge safe';
+          badge.textContent = '👻 TÀNG HÌNH (MỞ RƯƠNG)';
+          vigBomb.style.display = 'none';
+          vigFrozen.style.display = 'none';
+        } else if (myInGame.isFrozen) {
+          badge.className = 'status-badge frozen';
+          badge.textContent = myInGame.hasBomb ? '❄️ ÔM BOM & ĐÓNG BĂNG!' : '❄️ ĐÓNG BĂNG (2s)';
+          vigBomb.style.display = 'none';
+          vigFrozen.style.display = 'block';
+        } else if (myInGame.hasBomb) {
+          badge.className = 'status-badge bomb';
+          badge.textContent = '🔥 BẠN ÔM BOM!';
+          vigBomb.style.display = 'block';
+          vigFrozen.style.display = 'none';
+        } else {
+          badge.className = 'status-badge safe';
+          badge.textContent = '🟢 AN TOÀN';
+          vigBomb.style.display = 'none';
+          vigFrozen.style.display = 'none';
+        }
+
+        // Cập nhật trạng thái sạc của nút Tốc Biến
+        if (btnTeleport) {
+          btnTeleport.style.display = 'flex';
+          if (myInGame.hasTeleportCharge) {
+            btnTeleport.classList.add('charged');
+            btnTeleport.classList.remove('uncharged');
+            if (tpIcon) tpIcon.textContent = '⚡';
+            if (tpLabel) tpLabel.textContent = 'SẴN SÀNG';
+            if (tpOverlay) tpOverlay.style.display = 'none';
+          } else {
+            btnTeleport.classList.remove('charged');
+            btnTeleport.classList.add('uncharged');
+            if (tpIcon) tpIcon.textContent = '🔒';
+            if (tpLabel) tpLabel.textContent = 'CẦN SẠC';
+            if (tpOverlay) {
+              tpOverlay.style.display = 'flex';
+              tpOverlay.textContent = 'MỞ RƯƠNG';
+            }
+          }
+        }
+
+        // Tự động kiểm tra đồng bộ: nếu bản thân đang có câu hỏi chưa giải mà modal đang ẩn thì hiện ngay
+        if (gameState.activeQuiz && quizModal.classList.contains('hidden')) {
+          const q = gameState.activeQuiz;
+          if (q.type === 'UNLOCK' && q.playerId === myPlayer.id) {
+            showUnlockQuizUI(q);
+          } else if (q.type === 'PASS' && q.passerId === myPlayer.id) {
+            showPassQuizUI(q);
+          }
+        }
+
+        // Dash Cooldown Overlay
+        const dashOverlay = document.getElementById('dashCooldownOverlay');
+        if (myInGame.dashCooldown > 0) {
+          dashOverlay.style.display = 'flex';
+          dashOverlay.textContent = myInGame.dashCooldown.toFixed(1);
+        } else {
+          dashOverlay.style.display = 'none';
+        }
+      }
+
+      // Bomb Timer & Room State
+      const timerPill = document.getElementById('mobileTimerPill');
+      const timerVal = document.getElementById('mobileTimerVal');
+      const lobbyHint = document.getElementById('lobbyHintBanner');
+
+      if (gameState.status === 'PLAYING') {
+        if (lobbyHint) lobbyHint.style.display = 'none';
+        const timeSec = gameState.bombTimer || 0;
+        timerVal.textContent = timeSec.toFixed(1);
+        if (timeSec <= 5.0) timerPill.classList.add('urgent');
+        else timerPill.classList.remove('urgent');
+
+        // Âm thanh cảnh báo dồn dập cho người đang cầm bom (5s cuối)
+        if (myInGame && myInGame.hasBomb && timeSec <= 5.0 && timeSec > 0) {
+          const curSec = Math.ceil(timeSec);
+          if (curSec !== window._lastMobileBeepSec) {
+            window._lastMobileBeepSec = curSec;
+            window.GameAudio?.sfx.beepUrgent(600 + (6 - curSec) * 150);
+          }
+        } else if (!myInGame || !myInGame.hasBomb || timeSec > 5.0) {
+          window._lastMobileBeepSec = -1;
+        }
+
+        // Cập nhật đồng hồ đếm ngược bom trực tiếp vào khung câu hỏi trên điện thoại (chỉ khi không phải CHEST)
+        if (currentQuizMode !== 'CHEST') {
+          const modalTimerVal = document.getElementById('quizModalTimerVal');
+          const modalTimerPill = document.getElementById('quizModalTimerPill');
+          if (modalTimerVal) {
+            modalTimerVal.textContent = timeSec.toFixed(1);
+            if (modalTimerPill) {
+              modalTimerPill.innerHTML = `<span>💣</span> <b id="quizModalTimerVal">${timeSec.toFixed(1)}</b>s`;
+              if (timeSec <= 5.0) modalTimerPill.classList.add('urgent');
+              else modalTimerPill.classList.remove('urgent');
+            }
+          }
+        }
+      } else if (gameState.status === 'ROUND_INTRO') {
+        if (lobbyHint) lobbyHint.style.display = 'none';
+        timerVal.textContent = `${gameState.introCountdown || 3}`;
+        timerPill.classList.remove('urgent');
+      } else if (gameState.status === 'INTERMISSION') {
+        timerVal.textContent = 'BÙM!';
+        timerPill.classList.add('urgent');
+      } else if (gameState.status === 'GAME_OVER') {
+        timerVal.textContent = '🏆';
+        timerPill.classList.remove('urgent');
+      } else {
+        if (lobbyHint) lobbyHint.style.display = 'block';
+        timerVal.textContent = 'CHỜ';
+        timerPill.classList.remove('urgent');
+      }
+    }
+
+    // ==========================================
+    // MINI CANVAS RENDERING (60 FPS CONTINUOUS)
+    // Tự động kéo giãn full màn hình và phóng to nhân vật cho mobile
+    // ==========================================
+    const smoothPositions = new Map();
+    let myFocalRingTimer = 0; // Đèn định vị khi vừa đáp đất sau Tốc biến hoặc Hồi sinh
+
+    function renderMiniArena() {
+      const arenaW = arenaConfig.width || 1600;
+      const arenaH = arenaConfig.height || 1000;
+
+      if (myFocalRingTimer > 0) {
+        myFocalRingTimer = Math.max(0, myFocalRingTimer - 0.016);
+      }
+
+      // Tính tỷ lệ màn hình điện thoại thực tế để vẽ hình tròn không bị méo (perfect circle)
+      const clientW = miniCanvas.clientWidth || 1600;
+      const clientH = miniCanvas.clientHeight || 1000;
+      const stretchRatio = (clientW / arenaW) / (clientH / arenaH);
+
+      // Helper vẽ hình tròn chuẩn xác (bù trừ tỷ lệ co giãn màn hình ngang)
+      function drawCircle(x, y, r, fill, stroke, lw) {
+        miniCtx.beginPath();
+        miniCtx.ellipse(x, y, r / stretchRatio, r, 0, 0, Math.PI * 2);
+        if (fill) {
+          miniCtx.fillStyle = fill;
+          miniCtx.fill();
+        }
+        if (stroke && lw) {
+          miniCtx.strokeStyle = stroke;
+          miniCtx.lineWidth = lw;
+          miniCtx.stroke();
+        }
+      }
+
+      // Reset transform và shadow để tránh nhòe/vệt mờ đồ họa
+      miniCtx.setTransform(1, 0, 0, 1, 0, 0);
+      miniCtx.shadowBlur = 0;
+      miniCtx.shadowColor = 'transparent';
+      miniCtx.globalAlpha = 1.0;
+      miniCtx.globalCompositeOperation = 'source-over';
+
+      miniCtx.clearRect(0, 0, arenaW, arenaH);
+
+      // Sàn đấu đặc 100%
+      miniCtx.fillStyle = '#090714';
+      miniCtx.fillRect(0, 0, arenaW, arenaH);
+
+      // Grid ô lưới
+      miniCtx.strokeStyle = 'rgba(108, 92, 231, 0.12)';
+      miniCtx.lineWidth = 1;
+      for (let x = 0; x <= arenaW; x += 80) {
+        miniCtx.beginPath();
+        miniCtx.moveTo(x, 0);
+        miniCtx.lineTo(x, arenaH);
+        miniCtx.stroke();
+      }
+      for (let y = 0; y <= arenaH; y += 80) {
+        miniCtx.beginPath();
+        miniCtx.moveTo(0, y);
+        miniCtx.lineTo(arenaW, y);
+        miniCtx.stroke();
+      }
+
+      // Viền đấu trường neon
+      miniCtx.strokeStyle = '#6C5CE7';
+      miniCtx.lineWidth = 8;
+      miniCtx.strokeRect(12, 12, arenaW - 24, arenaH - 24);
+
+      // Chướng ngại vật
+      (arenaConfig.obstacles || []).forEach(obs => {
+        miniCtx.save();
+        if (obs.type === 'circle') {
+          drawCircle(obs.x, obs.y, obs.radius, '#1b143b', '#A29BFE', 4);
+        } else if (obs.type === 'rect') {
+          miniCtx.beginPath();
+          if (miniCtx.roundRect) {
+            miniCtx.roundRect(obs.x, obs.y, obs.width, obs.height, obs.radius || 12);
+          } else {
+            miniCtx.rect(obs.x, obs.y, obs.width, obs.height);
+          }
+          miniCtx.fillStyle = '#171333';
+          miniCtx.fill();
+          miniCtx.lineWidth = 4;
+          miniCtx.strokeStyle = '#00CEC9';
+          miniCtx.stroke();
+        }
+        miniCtx.restore();
+      });
+
+      const now = Date.now();
+
+      // RƯƠNG BÁU TRẮC NGHIỆM TRÊN MOBILE
+      (gameState.chests || []).forEach(chest => {
+        miniCtx.save();
+        const bob = Math.sin((now + chest.x) / 180) * 8;
+        const cx = chest.x;
+        const cy = chest.y + bob;
+
+        drawCircle(cx, cy, 54, 'rgba(255, 215, 0, 0.28)', '#FFD700', 4);
+
+        miniCtx.font = '52px sans-serif';
+        miniCtx.textAlign = 'center';
+        miniCtx.textBaseline = 'middle';
+        miniCtx.fillText('🎁', cx, cy + 2);
+
+        if (chest.isBeingOpened) {
+          miniCtx.font = 'bold 16px Outfit, sans-serif';
+          miniCtx.fillStyle = '#FFA502';
+          miniCtx.fillText(`🔒 ĐANG MỞ... (${chest.attemptsLeft}/2)`, cx, cy - 52);
+        } else {
+          miniCtx.font = 'bold 18px Outfit, sans-serif';
+          miniCtx.fillStyle = '#FFD700';
+          miniCtx.fillText(`RƯƠNG (${chest.attemptsLeft}/2)`, cx, cy - 52);
+        }
+
+        miniCtx.restore();
+      });
+
+      // BẮT CHẠM RƯƠNG PHÍA CLIENT (CLIENT-SIDE CLAIM - NHANH, KHÔNG CHỜ TICK SERVER)
+      if (myPlayer && myPlayer.isAlive && !myPlayer.isOpeningChest && !myPlayer.isFrozen && !myPlayer.isStunned && !myPlayer.isRespawning) {
+        if (!myPlayer.chestOpenCooldown || myPlayer.chestOpenCooldown <= 0) {
+          const chestsList = gameState.chests || [];
+          for (let i = 0; i < chestsList.length; i++) {
+            const chest = chestsList[i];
+            if (chest.attemptsLeft > 0 && !chest.isBeingOpened) {
+              const dx = myPlayer.x - chest.x;
+              const dy = myPlayer.y - chest.y;
+              if (Math.abs(dx) < 65 && Math.abs(dy) < 65 && (dx * dx + dy * dy < 3800)) {
+                if (!window._lastChestClaim || (Date.now() - window._lastChestClaim > 800)) {
+                  window._lastChestClaim = Date.now();
+                  socket.emit('player_claim_chest', { chestId: chest.id });
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Danh sách người chơi
+      const playersList = gameState.players || [];
+      const immuneId = gameState.immunePlayerId;
+      const graceTimer = gameState.graceTimer;
+      const currentAliveIds = new Set();
+
+      // Cập nhật vị trí mượt (Lerp) cho toàn bộ người chơi
+      playersList.forEach(p => {
+        if (!p.isAlive) return;
+        currentAliveIds.add(p.id);
+        let sp = smoothPositions.get(p.id);
+        if (!sp) {
+          sp = { x: p.x, y: p.y };
+          smoothPositions.set(p.id, sp);
+        } else {
+          const dx = p.x - sp.x;
+          const dy = p.y - sp.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 180) {
+            sp.x = p.x;
+            sp.y = p.y;
+          } else {
+            sp.x += dx * 0.45;
+            sp.y += dy * 0.45;
+          }
+        }
+      });
+
+      // Lấy thông tin bản thân (Hero Player)
+      const me = playersList.find(p => p.id === myPlayer.id && p.isAlive);
+      const spMe = me ? smoothPositions.get(me.id) : null;
+
+      // ==========================================
+      // ĐƯỜNG DẪN DỊCH CHUYỂN TỐC BIẾN (WARP LASER TRAIL)
+      // Vẽ một đường laser sáng rực từ vị trí cũ đến vị trí mới đáp đất
+      // ==========================================
+      if (myTeleportTrail) {
+        const elapsed = Date.now() - myTeleportTrail.startTime;
+        if (elapsed < myTeleportTrail.duration) {
+          const progress = elapsed / myTeleportTrail.duration;
+          const alpha = Math.max(0, 1.0 - progress);
+
+          miniCtx.save();
+
+          // 1. Chùm laser phát sáng ngoại vi (Outer Glow)
+          miniCtx.beginPath();
+          miniCtx.moveTo(myTeleportTrail.fromX, myTeleportTrail.fromY);
+          miniCtx.lineTo(myTeleportTrail.toX, myTeleportTrail.toY);
+          miniCtx.strokeStyle = `rgba(0, 206, 201, ${alpha * 0.85})`;
+          miniCtx.lineWidth = 10;
+          miniCtx.shadowColor = '#00CEC9';
+          miniCtx.shadowBlur = 24;
+          miniCtx.stroke();
+
+          // 2. Lõi laser đứt nét chuyển động hướng về đích
+          miniCtx.beginPath();
+          miniCtx.moveTo(myTeleportTrail.fromX, myTeleportTrail.fromY);
+          miniCtx.lineTo(myTeleportTrail.toX, myTeleportTrail.toY);
+          miniCtx.setLineDash([20, 14]);
+          miniCtx.lineDashOffset = -(Date.now() / 15) % 34;
+          miniCtx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.95})`;
+          miniCtx.lineWidth = 4;
+          miniCtx.stroke();
+          miniCtx.setLineDash([]);
+
+          // 3. Điểm xuất phát (VỊ TRÍ CŨ)
+          drawCircle(myTeleportTrail.fromX, myTeleportTrail.fromY, 32, `rgba(108, 92, 231, ${alpha * 0.25})`, `rgba(162, 155, 254, ${alpha})`, 3);
+          miniCtx.font = 'bold 16px Outfit, sans-serif';
+          miniCtx.textAlign = 'center';
+          miniCtx.fillStyle = `rgba(162, 155, 254, ${alpha})`;
+          miniCtx.fillText('⭕ VỊ TRÍ CŨ', myTeleportTrail.fromX, myTeleportTrail.fromY - 42);
+
+          // 4. Điểm đáp đất mới (Vòng sóng xung kích mở rộng)
+          const pulseR = 40 + (progress * 130);
+          drawCircle(myTeleportTrail.toX, myTeleportTrail.toY, pulseR, null, `rgba(0, 206, 201, ${alpha * 0.7})`, 4);
+          drawCircle(myTeleportTrail.toX, myTeleportTrail.toY, pulseR * 0.6, null, `rgba(255, 215, 0, ${alpha * 0.85})`, 3);
+
+          // Mũi tên chỉ hướng dịch chuyển tại điểm đến
+          const tAngle = Math.atan2(myTeleportTrail.toY - myTeleportTrail.fromY, myTeleportTrail.toX - myTeleportTrail.fromX);
+          miniCtx.translate(myTeleportTrail.toX, myTeleportTrail.toY);
+          miniCtx.rotate(tAngle);
+          miniCtx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+          miniCtx.beginPath();
+          miniCtx.moveTo(0, 0);
+          miniCtx.lineTo(-24, -14);
+          miniCtx.lineTo(-16, 0);
+          miniCtx.lineTo(-24, 14);
+          miniCtx.closePath();
+          miniCtx.fill();
+
+          miniCtx.restore();
+        } else {
+          myTeleportTrail = null;
+        }
+      }
+
+      // ==========================================
+      // PASS 1: VẼ CÁC BẠN KHÁC (NGƯỜI CHƠI KHÁC / BOT)
+      // Nếu các bạn khác đứng quá gần mình (<95px), tự động làm mờ (alpha 0.45)
+      // để không bao giờ che khuất tầm nhìn của bạn!
+      // ==========================================
+      playersList.forEach(p => {
+        if (!p.isAlive || p.id === myPlayer.id) return;
+        const sp = smoothPositions.get(p.id);
+        if (!sp) return;
+
+        const distToMe = spMe ? Math.hypot(sp.x - spMe.x, sp.y - spMe.y) : 999;
+        const isNearMe = distToMe < 48;
+
+        miniCtx.save();
+        miniCtx.translate(sp.x, sp.y);
+
+        // Hiệu ứng mờ nhẹ chỉ khi thực sự dẫm đè lên nhau (<48px)
+        if (p.isInvisible) {
+          miniCtx.globalAlpha = 0.35;
+        } else if (isNearMe) {
+          miniCtx.globalAlpha = 0.80;
+        } else {
+          miniCtx.globalAlpha = 0.95;
+        }
+
+        // Tàng hình khi đang giải câu hỏi rương báu
+        if (p.isInvisible) {
+          drawCircle(0, 0, 56, null, '#A29BFE', 3);
+        }
+
+        // Bị choáng / khống chế
+        if (p.isStunned) {
+          miniCtx.font = '32px sans-serif';
+          miniCtx.textAlign = 'center';
+          miniCtx.fillText('⚡😵', 0, -60);
+        }
+
+        // Vòng bảo vệ miễn nhiễm
+        if (p.id === immuneId && graceTimer > 0) {
+          drawCircle(0, 0, 48, null, 'rgba(84, 160, 255, 0.95)', 3);
+        }
+
+        // Bị đóng băng
+        if (p.isFrozen) {
+          drawCircle(0, 0, 50, 'rgba(0, 206, 201, 0.35)', '#00CEC9', 3);
+          miniCtx.font = '30px sans-serif';
+          miniCtx.textAlign = 'center';
+          miniCtx.fillText('❄️🔒', 0, -56);
+        }
+
+        // Người này giữ bom: Vòng lửa nguy hiểm
+        if (p.hasBomb) {
+          const firePulse = Math.sin(now / 100) * 10;
+          drawCircle(0, 0, 68 + firePulse, 'rgba(255, 71, 87, 0.35)', '#FF4757', 5);
+
+          miniCtx.save();
+          miniCtx.rotate(now / 400);
+          miniCtx.setLineDash([12, 8]);
+          miniCtx.strokeStyle = '#FFA502';
+          miniCtx.lineWidth = 3;
+          miniCtx.beginPath();
+          miniCtx.arc(0, 0, 78, 0, Math.PI * 2);
+          miniCtx.stroke();
+          miniCtx.restore();
+
+          const bob = Math.sin(now / 130) * 6;
+          miniCtx.font = '54px sans-serif';
+          miniCtx.textAlign = 'center';
+          miniCtx.fillText('💣', 0, -70 + bob);
+        }
+
+        // Thân nhân vật (kích thước chuẩn 36px)
+        const radius = 36;
+        const bodyColor = p.hasBomb ? '#FF4757' : (p.color || '#6C5CE7');
+        const borderColor = p.hasBomb ? '#FFA502' : '#ffffff';
+        drawCircle(0, 0, radius, bodyColor, borderColor, 3);
+
+        // Linh vật đại diện
+        miniCtx.font = '32px sans-serif';
+        miniCtx.textAlign = 'center';
+        miniCtx.textBaseline = 'middle';
+        miniCtx.fillText(p.avatar || '🎓', 0, 2);
+
+        // Tên học sinh
+        const bSec = (gameState.bombTimer || 15).toFixed(0);
+        let label = p.hasBomb ? `💣 ${p.name.toUpperCase()} (${bSec}s)` : `${p.name} • ${p.score || 0}đ`;
+        if (!p.hasBomb && p.scoreMultiplier > 1) label += ' ⚡x2';
+
+        miniCtx.font = 'bold 17px Outfit, sans-serif';
+        miniCtx.fillStyle = p.hasBomb ? '#FF7675' : '#ffffff';
+        miniCtx.fillText(label, 0, -46);
+
+        miniCtx.restore();
+      });
+
+      // ==========================================
+      // PASS 2: VẼ BẢN THÂN (HERO PLAYER - LUÔN LUÔN Ở LỚP TRÊN CÙNG!)
+      // Được vẽ sau cùng nên không ai có thể đè lên hay che khuất bạn!
+      // ==========================================
+      if (me && spMe) {
+        miniCtx.save();
+        miniCtx.translate(spMe.x, spMe.y);
+        miniCtx.globalAlpha = 1.0; // Luôn hiển thị 100% rõ nét
+
+        // 1. Bệ phát sáng hào quang mặt đất (HERO GROUND PEDESTAL - VỪA VẶN NHÂN VẬT 46PX)
+        const heroHalo = Math.sin(now / 140) * 4;
+        drawCircle(0, 0, 48 + heroHalo, 'rgba(0, 206, 201, 0.25)', '#00CEC9', 3);
+        drawCircle(0, 0, 42, 'rgba(255, 215, 0, 0.35)', '#FFD700', 2.5);
+
+        // Nếu đang giữ bom: Vẽ vòng đỏ nhấp nháy hiển thị chính xác VÙNG TIẾP XÚC CHUYỀN BOM (68px)
+        if (me.hasBomb) {
+          miniCtx.save();
+          miniCtx.beginPath();
+          miniCtx.arc(0, 0, 68, 0, Math.PI * 2);
+          miniCtx.setLineDash([8, 6]);
+          miniCtx.lineDashOffset = -(now / 20) % 28;
+          miniCtx.strokeStyle = 'rgba(255, 71, 87, 0.75)';
+          miniCtx.lineWidth = 2.5;
+          miniCtx.stroke();
+          miniCtx.restore();
+        }
+
+        // Spotlight khẩn cấp khi vừa Tốc biến hoặc Hồi sinh
+        if (myFocalRingTimer > 0) {
+          const progress = 1.0 - (myFocalRingTimer / 2.5);
+          const rPulse = 55 + (progress * 105);
+          const aPulse = Math.max(0, myFocalRingTimer / 2.5);
+          drawCircle(0, 0, rPulse, null, `rgba(0, 206, 201, ${aPulse})`, 6);
+          drawCircle(0, 0, rPulse * 0.65, null, `rgba(255, 215, 0, ${aPulse})`, 4);
+
+          miniCtx.save();
+          miniCtx.font = 'bold 22px Outfit, sans-serif';
+          miniCtx.textAlign = 'center';
+          miniCtx.fillStyle = `rgba(255, 215, 0, ${aPulse})`;
+          miniCtx.shadowColor = '#00CEC9';
+          miniCtx.shadowBlur = 14;
+          miniCtx.fillText('📍 BẠN ĐÃ ĐÁP XUỐNG ĐÂY!', 0, -125);
+          miniCtx.restore();
+        }
+
+        // Tàng hình khi đang giải rương
+        if (me.isInvisible) {
+          miniCtx.globalAlpha = 0.45;
+          drawCircle(0, 0, 70, null, '#A29BFE', 4);
+        }
+
+        // Bị choáng / khống chế
+        if (me.isStunned) {
+          miniCtx.font = '40px sans-serif';
+          miniCtx.textAlign = 'center';
+          miniCtx.fillText('⚡😵', 0, -74);
+        }
+
+        // Khiên bảo vệ miễn nhiễm
+        if (me.id === immuneId && graceTimer > 0) {
+          drawCircle(0, 0, 62, null, 'rgba(84, 160, 255, 0.95)', 4.5);
+        }
+
+        // Bị đóng băng
+        if (me.isFrozen) {
+          drawCircle(0, 0, 62, 'rgba(0, 206, 201, 0.35)', '#00CEC9', 4);
+          miniCtx.font = '36px sans-serif';
+          miniCtx.textAlign = 'center';
+          miniCtx.fillText('❄️🔒', 0, -70);
+        }
+
+        // Nếu bản thân đang giữ bom: Vòng lửa khổng lồ
+        if (me.hasBomb) {
+          const firePulse = Math.sin(now / 100) * 14;
+          drawCircle(0, 0, 80 + firePulse, 'rgba(255, 71, 87, 0.45)', '#FF4757', 6);
+
+          miniCtx.save();
+          miniCtx.rotate(now / 350);
+          miniCtx.setLineDash([14, 8]);
+          miniCtx.strokeStyle = '#FFA502';
+          miniCtx.lineWidth = 4;
+          miniCtx.beginPath();
+          miniCtx.arc(0, 0, 92, 0, Math.PI * 2);
+          miniCtx.stroke();
+          miniCtx.restore();
+
+          const bob = Math.sin(now / 130) * 8;
+          miniCtx.font = '64px sans-serif';
+          miniCtx.textAlign = 'center';
+          miniCtx.fillText('💣', 0, -82 + bob);
+        }
+
+        // 2. Thân nhân vật phóng to nổi bật (Radius 52px, viền vàng kim 6px rực sáng)
+        const myRadius = 52;
+        const myBodyColor = me.hasBomb ? '#FF4757' : (me.color || '#6C5CE7');
+        drawCircle(0, 0, myRadius, myBodyColor, '#FFD700', 6);
+
+        // 3. Linh vật đại diện lớn, cực nét
+        miniCtx.font = '46px sans-serif';
+        miniCtx.textAlign = 'center';
+        miniCtx.textBaseline = 'middle';
+        miniCtx.fillText(me.avatar || '🎓', 0, 2);
+
+        // 4. Bảng tên Neon Pill nổi bật trên đầu (chống lẫn lộn)
+        const bSec = (gameState.bombTimer || 15).toFixed(0);
+        let myLabelText = me.hasBomb ? `💣 BẠN CẦM BOM (${bSec}s)` : `⭐ BẠN • ${me.score || 0}đ`;
+        if (!me.hasBomb && me.scoreMultiplier > 1) myLabelText += ' ⚡x2';
+
+        miniCtx.save();
+        const pillW = 168;
+        const pillH = 34;
+        miniCtx.fillStyle = 'rgba(12, 9, 32, 0.94)';
+        miniCtx.strokeStyle = me.hasBomb ? '#FF4757' : '#FFD700';
+        miniCtx.lineWidth = 2.5;
+        miniCtx.shadowColor = me.hasBomb ? '#FF4757' : '#FFD700';
+        miniCtx.shadowBlur = 12;
+
+        if (miniCtx.roundRect) {
+          miniCtx.beginPath();
+          miniCtx.roundRect(-pillW / (2 * stretchRatio), -96, pillW / stretchRatio, pillH, 17);
+          miniCtx.fill();
+          miniCtx.stroke();
+        } else {
+          miniCtx.fillRect(-pillW / (2 * stretchRatio), -96, pillW / stretchRatio, pillH);
+          miniCtx.strokeRect(-pillW / (2 * stretchRatio), -96, pillW / stretchRatio, pillH);
+        }
+
+        miniCtx.font = 'bold 20px Outfit, sans-serif';
+        miniCtx.fillStyle = me.hasBomb ? '#FF7675' : '#FFD700';
+        miniCtx.textAlign = 'center';
+        miniCtx.textBaseline = 'middle';
+        miniCtx.fillText(myLabelText, 0, -78);
+
+        // Mũi tên neon chỉ thẳng vào đầu
+        miniCtx.fillStyle = me.hasBomb ? '#FF4757' : '#FFD700';
+        miniCtx.beginPath();
+        miniCtx.moveTo(0, -60);
+        miniCtx.lineTo(-12 / stretchRatio, -72);
+        miniCtx.lineTo(12 / stretchRatio, -72);
+        miniCtx.closePath();
+        miniCtx.fill();
+        miniCtx.restore();
+
+        miniCtx.restore();
+      }
+
+      // LA BÀN CẢNH BÁO BOM (DANGER COMPASS: MŨI TÊN ĐỊNH HƯỚNG BÁO BOM ĐANG Ở ĐÂU)
+      const myInGame = playersList.find(p => p.id === myPlayer.id && p.isAlive);
+      const bombHolder = playersList.find(p => p.hasBomb && p.isAlive);
+
+      if (myInGame && bombHolder && myInGame.id !== bombHolder.id) {
+        const spMe = smoothPositions.get(myInGame.id) || { x: myInGame.x, y: myInGame.y };
+        const spBomb = smoothPositions.get(bombHolder.id) || { x: bombHolder.x, y: bombHolder.y };
+
+        const dx = spBomb.x - spMe.x;
+        const dy = spBomb.y - spMe.y;
+        const dist = Math.hypot(dx, dy);
+        const angle = Math.atan2(dy, dx);
+
+        // Mũi tên quỹ đạo quay quanh nhân vật của mình
+        const compassDist = 95;
+        const arrowX = spMe.x + Math.cos(angle) * (compassDist / stretchRatio);
+        const arrowY = spMe.y + Math.sin(angle) * compassDist;
+
+        miniCtx.save();
+        miniCtx.translate(arrowX, arrowY);
+        miniCtx.rotate(angle);
+
+        const isNear = dist < 360;
+        const arrowColor = isNear ? '#FF2E7E' : '#FFA502';
+        miniCtx.shadowColor = arrowColor;
+        miniCtx.shadowBlur = isNear ? 16 : 8;
+
+        miniCtx.fillStyle = arrowColor;
+        miniCtx.beginPath();
+        miniCtx.moveTo(20 / stretchRatio, 0);
+        miniCtx.lineTo(-14 / stretchRatio, -12);
+        miniCtx.lineTo(-6 / stretchRatio, 0);
+        miniCtx.lineTo(-14 / stretchRatio, 12);
+        miniCtx.closePath();
+        miniCtx.fill();
+
+        miniCtx.restore();
+
+        // Nhấp nháy cảnh báo đỏ khi bom áp sát gần (< 360px)
+        if (isNear) {
+          miniCtx.save();
+          miniCtx.font = 'bold 20px Outfit, sans-serif';
+          miniCtx.textAlign = 'center';
+          miniCtx.fillStyle = '#FF4757';
+          miniCtx.shadowColor = '#FF2E7E';
+          miniCtx.shadowBlur = 10;
+          if (Math.sin(now / 90) > 0) {
+            miniCtx.fillText('⚠️ BOM ĐANG ÁP SÁT!', spMe.x, spMe.y - 120);
+          }
+          miniCtx.restore();
+        }
+      }
+
+      for (const id of smoothPositions.keys()) {
+        if (!currentAliveIds.has(id)) {
+          smoothPositions.delete(id);
+        }
+      }
+
+      requestAnimationFrame(renderMiniArena);
+    }
+
+    requestAnimationFrame(renderMiniArena);
+
+    // ==========================================
+    // VIRTUAL JOYSTICK
+    // ==========================================
+    const joystickZone = document.getElementById('joystickZone');
+    const joystickStick = document.getElementById('joystickStick');
+
+    let joystickTouchId = null;
+    let joystickOriginX = 0;
+    let joystickOriginY = 0;
+    const MAX_RADIUS = 32;
+
+    let inputVector = { x: 0, y: 0 };
+    let inputSendInterval = null;
+
+    joystickZone.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (joystickTouchId !== null) return;
+
+      const touch = e.changedTouches[0];
+      joystickTouchId = touch.identifier;
+
+      const rect = joystickZone.getBoundingClientRect();
+      joystickOriginX = rect.left + rect.width / 2;
+      joystickOriginY = rect.top + rect.height / 2;
+
+      handleJoystickMove(touch.clientX, touch.clientY);
+
+      if (!inputSendInterval) {
+        inputSendInterval = setInterval(sendInputToServer, 33);
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      if (joystickTouchId === null) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === joystickTouchId) {
+          handleJoystickMove(touch.clientX, touch.clientY);
+          break;
+        }
+      }
+    }, { passive: false });
+
+    function endJoystickTouch(e) {
+      if (joystickTouchId === null) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === joystickTouchId) {
+          joystickTouchId = null;
+          inputVector = { x: 0, y: 0 };
+          joystickStick.style.transform = `translate(0px, 0px)`;
+          sendInputToServer();
+          if (inputSendInterval) {
+            clearInterval(inputSendInterval);
+            inputSendInterval = null;
+          }
+          break;
+        }
+      }
+    }
+
+    window.addEventListener('touchend', endJoystickTouch);
+    window.addEventListener('touchcancel', endJoystickTouch);
+
+    function handleJoystickMove(clientX, clientY) {
+      const hint = document.getElementById('lobbyHintBanner');
+      if (hint && hint.style.display !== 'none') {
+        hint.style.display = 'none';
+      }
+
+      let dx = clientX - joystickOriginX;
+      let dy = clientY - joystickOriginY;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > MAX_RADIUS) {
+        dx = (dx / dist) * MAX_RADIUS;
+        dy = (dy / dist) * MAX_RADIUS;
+      }
+
+      joystickStick.style.transform = `translate(${dx}px, ${dy}px)`;
+      inputVector.x = dx / MAX_RADIUS;
+      inputVector.y = dy / MAX_RADIUS;
+    }
+
+    function sendInputToServer() {
+      socket.emit('player_input', inputVector);
+    }
+
+    // ==========================================
+    // SKILL BUTTONS: DASH & TELEPORT FARTHEST
+    // ==========================================
+    const btnDash = document.getElementById('btnDash');
+    btnDash.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      triggerDashAction();
+    }, { passive: false });
+    btnDash.addEventListener('click', triggerDashAction);
+
+    function triggerDashAction() {
+      if (navigator.vibrate) navigator.vibrate(60);
+      socket.emit('player_dash');
+      window.GameAudio?.sfx.dash();
+    }
+
+    const btnTeleport = document.getElementById('btnTeleportFarthest');
+    btnTeleport.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      triggerTeleportAction();
+    }, { passive: false });
+    btnTeleport.addEventListener('click', triggerTeleportAction);
+
+    function triggerTeleportAction() {
+      const myInGame = (gameState.players || []).find(p => p.id === myPlayer.id);
+      if (myInGame && !myInGame.hasTeleportCharge) {
+        showToast('💡 Hãy mở Rương báu và giải đúng câu hỏi để sạc Tốc biến!', 2500);
+        if (navigator.vibrate) navigator.vibrate(120);
+        return;
+      }
+      if (navigator.vibrate) navigator.vibrate([100, 50, 150]);
+      socket.emit('player_teleport_farthest');
+    }
+
+    // Keyboard support for testing
+    window.addEventListener('keydown', (e) => {
+      let changed = false;
+      if (e.key === 'ArrowUp' || e.key === 'w') { inputVector.y = -1; changed = true; }
+      if (e.key === 'ArrowDown' || e.key === 's') { inputVector.y = 1; changed = true; }
+      if (e.key === 'ArrowLeft' || e.key === 'a') { inputVector.x = -1; changed = true; }
+      if (e.key === 'ArrowRight' || e.key === 'd') { inputVector.x = 1; changed = true; }
+      if (e.key === ' ' || e.key === 'Shift') socket.emit('player_dash');
+      if (e.key === 't' || e.key === 'T' || e.key === 'e') socket.emit('player_teleport_farthest');
+      if (changed) socket.emit('player_input', inputVector);
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (['ArrowUp', 'ArrowDown', 'w', 's'].includes(e.key)) inputVector.y = 0;
+      if (['ArrowLeft', 'ArrowRight', 'a', 'd'].includes(e.key)) inputVector.x = 0;
+      socket.emit('player_input', inputVector);
+    });
+  </script>
+</body>
+</html>

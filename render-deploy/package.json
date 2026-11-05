@@ -1,0 +1,23 @@
+{
+  "name": "dau-truong-bom-tin-hoc-10",
+  "version": "1.0.0",
+  "description": "Đấu Trường Bom: Kiểm Thử Và Gỡ Lỗi Chương Trình (Tin Học 10 - Bài 30)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  },
+  "keywords": [
+    "tin-hoc-10",
+    "bai-30",
+    "kiem-thu-go-loi",
+    "game-giao-duc"
+  ],
+  "license": "MIT"
+}
