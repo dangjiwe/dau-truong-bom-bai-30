@@ -124,6 +124,23 @@ const OBSTACLES = [
 ];
 
 // ==========================================
+
+// ==========================================
+// BẢO MẬT & MẬT KHẨU MÀN HÌNH GIÁO VIÊN (HOST AUTH)
+// ==========================================
+let TEACHER_PASSWORD = process.env.TEACHER_PASSWORD || '123456';
+const authenticatedHostSockets = new Set();
+
+function isHostAuthorized(socket) {
+  return authenticatedHostSockets.has(socket.id) || !!socket.isHostAuthenticated;
+}
+
+function requireHostAuth(socket) {
+  if (isHostAuthorized(socket)) return true;
+  socket.emit('host_auth_required', { message: 'Cần mật khẩu giáo viên để thực hiện thao tác này!' });
+  return false;
+}
+
 // GAME & TOURNAMENT STATE (5 PHÚT TỔNG TRẬN ĐẤU)
 // ==========================================
 const MATCH_TOTAL_TIME = 5 * 60; // 5 phút = 300 giây
@@ -2222,16 +2239,33 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 9. Điều khiển của Giáo viên (Host)
+  // 9. Điều khiển của Giáo viên (Host - Yêu cầu xác thực mật khẩu)
+  socket.on('host_login', (data, callback) => {
+    const pass = (data && data.password ? data.password : '').toString().trim();
+    if (pass === TEACHER_PASSWORD) {
+      authenticatedHostSockets.add(socket.id);
+      socket.isHostAuthenticated = true;
+      if (typeof callback === 'function') callback({ success: true });
+      else socket.emit('host_login_response', { success: true });
+      addEventLog('🔑 Giáo viên đã mở khóa quyền điều khiển máy chiếu thành công.', 'info');
+    } else {
+      if (typeof callback === 'function') callback({ success: false, message: 'Sai mật khẩu giáo viên!' });
+      else socket.emit('host_login_response', { success: false, message: 'Sai mật khẩu!' });
+    }
+  });
+
   socket.on('host_start_round', (data) => {
+    if (!requireHostAuth(socket)) return;
     startRound(data?.round || (gameState.roundNumber + 1));
   });
 
   socket.on('host_reset_game', () => {
+    if (!requireHostAuth(socket)) return;
     resetGame();
   });
 
   socket.on('host_set_bomb_timer', (data) => {
+    if (!requireHostAuth(socket)) return;
     const sec = parseInt(data?.seconds) || 30;
     BOMB_COUNTDOWN_DEFAULT = sec;
     gameState.bombTimer = sec;
@@ -2241,13 +2275,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('host_force_explode', () => {
+    if (!requireHostAuth(socket)) return;
     if (gameState.status === 'PLAYING') {
       gameState.bombTimer = 0;
     }
   });
 
-  // Thêm 1 Bot học sinh (chỉ giữ lại nút thêm bot theo yêu cầu)
+  // Thêm 1 Bot học sinh (chỉ giáo viên đã xác thực mới được thêm)
   socket.on('host_add_bot', () => {
+    if (!requireHostAuth(socket)) return;
     if (players.size >= 45) return;
     const botAvatars = ['🤖', '🐱', '🦊', '⚡', '🐼', '🐯', '🦄', '🚀', '🌺', '💎', '🐧', '🐶', '🦁', '🦉', '🐢'];
     const botColors = ['#FF4757', '#2ED573', '#1E90FF', '#FFA502', '#9B59B6', '#00CEC9', '#E84393', '#FD79A8'];
@@ -2347,6 +2383,7 @@ io.on('connection', (socket) => {
 
   // 9. Disconnect (Học sinh thoát hoặc đóng tab)
   socket.on('disconnect', () => {
+    authenticatedHostSockets.delete(socket.id);
     // Nếu học sinh ngắt kết nối đang mở rương báu
     const discPlayer = gamePlayers.get(socket.id);
     if (discPlayer && discPlayer.isOpeningChest) {

@@ -1122,6 +1122,43 @@
       text-overflow: ellipsis;
     }
 
+    
+    /* TEACHER AUTH LOCK MODAL */
+    .teacher-auth-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(8, 5, 20, 0.97);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000000;
+      padding: 24px;
+      backdrop-filter: blur(18px);
+    }
+
+    .teacher-auth-modal.hidden {
+      display: none !important;
+    }
+
+    .teacher-auth-card {
+      background: linear-gradient(145deg, #221644, #100b22);
+      border: 2.5px solid var(--accent);
+      box-shadow: 0 0 65px rgba(255, 46, 126, 0.45);
+      border-radius: 26px;
+      padding: 32px 38px;
+      max-width: 520px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      animation: pop-modal 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
     /* SUMMARY MODAL */
     .summary-modal {
       position: fixed;
@@ -1192,6 +1229,9 @@
       <div class="stat-pill match-timer-pill" id="matchTimerPill" style="background: rgba(0, 206, 201, 0.15); border: 2px solid #00CEC9; color: #fff; white-space: nowrap; flex-shrink: 0;">
         ⏱️ TRẬN ĐẤU: <b id="statMatchTimer" style="color: #00CEC9; font-size: 1.15rem; font-family: monospace; letter-spacing: 1px;">05:00</b>
       </div>
+      <button id="btnLockSpectator" class="stat-pill" style="cursor: pointer; background: rgba(255, 71, 87, 0.15); border: 1.5px solid #FF4757; color: #FF6B81; font-weight: 700; transition: all 0.2s;" title="Khóa màn hình giáo viên">
+        🔒 Khóa màn hình
+      </button>
       <div class="stat-pill" id="statPlayerCountPill" style="white-space: nowrap; flex-shrink: 0;">
         <span>👥 Học sinh:</span> <b id="statPlayerCount" style="color: var(--cyan); margin: 0 2px;">0</b><span style="opacity: 0.75;">/40</span>
       </div>
@@ -1332,7 +1372,40 @@
     </aside>
   </main>
 
-    <!-- QR ZOOM MODAL FOR LARGE CLASSROOM PROJECTION -->
+      <!-- TEACHER AUTHENTICATION MODAL (BẢO VỆ MÀN HÌNH GIÁO VIÊN) -->
+  <div class="teacher-auth-modal" id="teacherAuthModal">
+    <div class="teacher-auth-card">
+      <div style="font-size: 3.5rem; margin-bottom: 6px;">🔒 👨‍🏫 👩‍🏫</div>
+      <div class="badge-lesson" style="margin-bottom: 6px;">TIN HỌC 10 • BÀI 30</div>
+      <h2 style="font-family: 'Bungee', cursive; color: var(--gold); font-size: 1.6rem; margin: 0;">MÀN HÌNH DÀNH CHO GIÁO VIÊN</h2>
+      <p style="font-size: 0.92rem; color: #dfe6e9; margin: 8px 0 18px; line-height: 1.4;">
+        Đây là giao diện máy chiếu và bảng điều khiển trận đấu của Giáo viên.<br>
+        Vui lòng nhập mật khẩu quản trị để mở khóa quyền điều khiển.
+      </p>
+
+      <form id="teacherAuthForm" style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+        <div style="position: relative; width: 100%; max-width: 380px;">
+          <input type="password" id="inputTeacherPassword" placeholder="Nhập mật khẩu (Mặc định: 123456)" autocomplete="off"
+            style="width: 100%; padding: 12px 42px 12px 16px; background: rgba(0, 0, 0, 0.5); border: 2px solid var(--accent); border-radius: 12px; color: #fff; font-size: 1.1rem; text-align: center; letter-spacing: 2px; outline: none; font-family: monospace;">
+          <button type="button" id="btnToggleShowPass" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #b2bec3; font-size: 1.2rem; cursor: pointer;">👁️</button>
+        </div>
+
+        <div id="teacherAuthError" style="color: #FF4757; font-size: 0.88rem; font-weight: 700; min-height: 20px; display: none;">
+          ⚠️ Mật khẩu không chính xác! Vui lòng thử lại.
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="font-size: 1.1rem; padding: 12px 36px; width: 100%; max-width: 380px;">
+          🔓 MỞ KHÓA ĐIỀU KHIỂN
+        </button>
+        
+        <p style="font-size: 0.78rem; color: #b2bec3; margin: 6px 0 0;">
+          💡 <i>Mật khẩu mặc định: <b style="color: var(--gold);">123456</b> (có thể đổi qua biến môi trường TEACHER_PASSWORD).</i>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <!-- QR ZOOM MODAL FOR LARGE CLASSROOM PROJECTION -->
   <div class="qr-zoom-modal hidden" id="qrZoomModal">
     <div class="qr-zoom-card">
       <button class="qr-zoom-close" id="btnCloseQrZoom" title="Đóng phóng to (ESC)">✕</button>
@@ -2520,6 +2593,105 @@
 
     // ==========================================
     
+    
+    // ==========================================
+    // XÁC THỰC MẬT KHẨU GIÁO VIÊN (TEACHER AUTHENTICATION)
+    // ==========================================
+    let isTeacherAuthenticated = false;
+
+    function initTeacherAuth() {
+      const authModal = document.getElementById('teacherAuthModal');
+      const authForm = document.getElementById('teacherAuthForm');
+      const passInput = document.getElementById('inputTeacherPassword');
+      const errorMsg = document.getElementById('teacherAuthError');
+      const btnToggle = document.getElementById('btnToggleShowPass');
+      const btnLock = document.getElementById('btnLockSpectator');
+
+      // Tự động kiểm tra mật khẩu đã lưu trong phiên làm việc hiện tại (sessionStorage)
+      const savedPass = sessionStorage.getItem('teacherAuthPass');
+      if (savedPass) {
+        socket.emit('host_login', { password: savedPass }, (res) => {
+          if (res && res.success) {
+            isTeacherAuthenticated = true;
+            if (authModal) authModal.classList.add('hidden');
+          } else {
+            sessionStorage.removeItem('teacherAuthPass');
+            if (authModal) authModal.classList.remove('hidden');
+          }
+        });
+      }
+
+      if (btnToggle && passInput) {
+        btnToggle.addEventListener('click', () => {
+          if (passInput.type === 'password') {
+            passInput.type = 'text';
+            btnToggle.textContent = '🔒';
+          } else {
+            passInput.type = 'password';
+            btnToggle.textContent = '👁️';
+          }
+        });
+      }
+
+      if (authForm) {
+        authForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const enteredPass = (passInput.value || '').trim();
+          if (!enteredPass) {
+            if (errorMsg) {
+              errorMsg.textContent = '⚠️ Vui lòng nhập mật khẩu!';
+              errorMsg.style.display = 'block';
+            }
+            return;
+          }
+
+          socket.emit('host_login', { password: enteredPass }, (res) => {
+            if (res && res.success) {
+              isTeacherAuthenticated = true;
+              sessionStorage.setItem('teacherAuthPass', enteredPass);
+              if (authModal) authModal.classList.add('hidden');
+              if (errorMsg) errorMsg.style.display = 'none';
+              passInput.value = '';
+            } else {
+              if (errorMsg) {
+                errorMsg.textContent = '⚠️ Mật khẩu không chính xác! Vui lòng thử lại.';
+                errorMsg.style.display = 'block';
+              }
+              passInput.select();
+            }
+          });
+        });
+      }
+
+      // Nút khóa màn hình chủ động
+      if (btnLock) {
+        btnLock.addEventListener('click', () => {
+          sessionStorage.removeItem('teacherAuthPass');
+          isTeacherAuthenticated = false;
+          if (authModal) {
+            authModal.classList.remove('hidden');
+            if (passInput) {
+              passInput.value = '';
+              passInput.focus();
+            }
+          }
+        });
+      }
+
+      socket.on('host_auth_required', (data) => {
+        isTeacherAuthenticated = false;
+        if (authModal) {
+          authModal.classList.remove('hidden');
+          if (errorMsg) {
+            errorMsg.textContent = data.message || '⚠️ Cần đăng nhập mật khẩu giáo viên!';
+            errorMsg.style.display = 'block';
+          }
+        }
+      });
+    }
+
+    initTeacherAuth();
+
     // ==========================================
     // QR ZOOM MODAL LOGIC (DÀNH CHO HỌC SINH QUÉT XA)
     // ==========================================
