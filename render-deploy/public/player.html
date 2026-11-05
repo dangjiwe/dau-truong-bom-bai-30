@@ -1682,8 +1682,8 @@
     function updateMobileUI() {
       const myInGame = (gameState.players || []).find(p => p.id === myPlayer.id);
 
-      // Cập nhật đếm ngược 7 phút tổng trận đấu
-      const mSec = (gameState.matchTimer !== undefined) ? gameState.matchTimer : 420;
+      // Cập nhật đếm ngược 5 phút tổng trận đấu
+      const mSec = (gameState.matchTimer !== undefined) ? gameState.matchTimer : 300;
       const mMin = Math.floor(mSec / 60);
       const mRem = Math.floor(mSec % 60);
       const mFormatted = `${mMin.toString().padStart(2, '0')}:${mRem.toString().padStart(2, '0')}`;

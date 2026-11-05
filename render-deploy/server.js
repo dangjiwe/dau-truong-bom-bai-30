@@ -1749,7 +1749,10 @@ function getSurvivalRankings() {
     }));
 }
 
-function broadcastGameState() {
+let lastRosterBroadcastTime = 0;
+let lobbyTickCounter = 0;
+
+function broadcastGameState(forceRoster = false) {
   const livingPlayers = Array.from(gamePlayers.values()).filter(p => p.isAlive);
   const activeGamePlayers = Array.from(gamePlayers.values()).map(p => ({
     id: p.id,
@@ -1796,6 +1799,12 @@ function broadcastGameState() {
     rosterDirty = false;
   }
 
+  const now = Date.now();
+  const shouldSendRoster = forceRoster || (now - lastRosterBroadcastTime >= 1000) || (gameState.status !== 'PLAYING');
+  if (shouldSendRoster) {
+    lastRosterBroadcastTime = now;
+  }
+
   io.emit('game_tick', {
     status: gameState.status,
     roundNumber: gameState.roundNumber,
@@ -1814,16 +1823,16 @@ function broadcastGameState() {
     chests: activeChests,
     rosterCount: players.size,
     aliveCount: livingPlayers.length,
-    survivalRoster: cachedSurvivalRoster,
+    survivalRoster: shouldSendRoster ? cachedSurvivalRoster : undefined,
     topWrongQuestions: (gameState.status === 'GAME_OVER') ? getTopWrongQuestions(3) : [],
     winner: gameState.winner || null
   });
 }
 
 // ==========================================
-// 25 FPS SERVER GAME LOOP (TỐI ƯU CỰC ĐỘ CHO GÓI FREE 512MB RAM)
+// 20 FPS SERVER GAME LOOP (TỐI ƯU SIÊU BĂNG THÔNG CHO GÓI FREE RENDER)
 // ==========================================
-const TICK_RATE = 25;
+const TICK_RATE = 20;
 const DT = 1 / TICK_RATE;
 
 setInterval(() => {
@@ -1834,11 +1843,21 @@ setInterval(() => {
       io.emit('round_started', { round: gameState.roundNumber });
       rosterDirty = true;
     }
-    broadcastGameState();
+    broadcastGameState(true);
     return;
   }
 
   if (gameState.status !== 'PLAYING' && gameState.status !== 'LOBBY') {
+    return;
+  }
+
+  // Trong sảnh chờ (LOBBY), chỉ phát tick 1 lần mỗi giây hoặc ngay khi có học sinh vào để tiết kiệm 95% băng thông
+  if (gameState.status === 'LOBBY') {
+    lobbyTickCounter = (lobbyTickCounter || 0) + 1;
+    if (rosterDirty || lobbyTickCounter >= TICK_RATE) {
+      lobbyTickCounter = 0;
+      broadcastGameState(true);
+    }
     return;
   }
 

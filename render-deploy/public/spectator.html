@@ -1526,8 +1526,14 @@
     });
 
     let lastTopWrongQuestions = [];
+    let lastSavedSurvivalRoster = null;
 
     socket.on('game_tick', (state) => {
+      if (state.survivalRoster && state.survivalRoster.length > 0) {
+        lastSavedSurvivalRoster = state.survivalRoster;
+      } else if (lastSavedSurvivalRoster) {
+        state.survivalRoster = lastSavedSurvivalRoster;
+      }
       gameState = state;
       if (state.topWrongQuestions && state.topWrongQuestions.length > 0) {
         lastTopWrongQuestions = state.topWrongQuestions;
@@ -1764,10 +1770,10 @@
         if (rainPill) rainPill.style.display = 'none';
       }
 
-      // Đếm ngược 7 phút tổng trận đấu
+      // Đếm ngược 5 phút tổng trận đấu
       const matchTimerEl = document.getElementById('statMatchTimer');
       const matchPill = document.getElementById('matchTimerPill');
-      const mSec = (gameState.matchTimer !== undefined) ? gameState.matchTimer : 420;
+      const mSec = (gameState.matchTimer !== undefined) ? gameState.matchTimer : 300;
       const mMin = Math.floor(mSec / 60);
       const mRem = Math.floor(mSec % 60);
       const mFormatted = `${mMin.toString().padStart(2, '0')}:${mRem.toString().padStart(2, '0')}`;
